@@ -3,17 +3,16 @@ import streamlit as st
 from dotenv import load_dotenv
 import database as db
 
-# Load environment variables
+# Загрузка настроек и БД
 load_dotenv()
 db.init_db()
 
-# API Key check
 if "DEEPSEEK_API_KEY" in st.secrets:
     os.environ["DEEPSEEK_API_KEY"] = st.secrets["DEEPSEEK_API_KEY"]
 
 st.set_page_config(page_title="Юрист 44-ФЗ", page_icon="⚖️", layout="centered")
 
-# CSS для скрытия брендинга и настройки шрифтов
+# CSS для скрытия брендинга (оставили только самое важное)
 st.markdown("""
     <style>
     header, footer, #MainMenu {visibility: hidden !important; display: none !important;}
@@ -25,106 +24,111 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- АВТОРИЗАЦИЯ ---
+# 1. АВТОРИЗАЦИЯ
 if "user_id" not in st.session_state:
     st.title("⚖️ Вход в систему")
-    tg_id = st.text_input("Введите ваш Telegram ID или Никнейм:", placeholder="@username")
+    tg_id = st.text_input("Введите ваш ID:", placeholder="@username")
     if st.button("ВОЙТИ"):
         if tg_id:
             st.session_state.user_id = tg_id
             st.rerun()
         else:
-            st.warning("Введите ID")
+            st.warning("Введите логин")
     st.stop()
 
 user_id = st.session_state.user_id
 
-# --- УПРАВЛЕНИЕ ЧАТАМИ В SIDEBAR ---
+# 2. ПОДГОТОВКА ДАННЫХ В SIDEBAR
 with st.sidebar:
-    st.header(f"� {user_id}")
-    if st.button("СМЕНИТЬ АККАУНТ"):
+    st.header(f"👤 {user_id}")
+    if st.button("ВЫЙТИ"):
         for key in list(st.session_state.keys()): del st.session_state[key]
         st.rerun()
     
     st.markdown("---")
-    st.subheader("Мои чаты (до 10)")
+    st.subheader("Мои чаты")
     
-    # Загрузка списка чатов
     user_chats = db.get_user_chats(user_id)
     
-    # Создание нового чата
-    new_chat_name = st.text_input("Новый чат:", placeholder="Напр: Приемка работ", key="new_chat_name")
+    # Поле создания чата всегда активно
+    new_name = st.text_input("Название чата:", placeholder="Напр: Контракт 1", key="new_chat_input")
     if st.button("СОЗДАТЬ ЧАТ"):
-        if new_chat_name:
-            res = db.create_chat(user_id, new_chat_name)
+        if new_name:
+            res = db.create_chat(user_id, new_name)
             if res:
                 st.session_state.chat_id = res
-                st.success("Чат создан")
                 st.rerun()
-            else:
-                st.error("Лимит 10 чатов")
     
     st.markdown("---")
     
-    # Выбор чата
+    selected_chat_id = None
     if user_chats:
-        chat_options = {name: cid for cid, name in user_chats}
-        selected_chat_name = st.selectbox("Выберите чат:", options=list(chat_options.keys()), index=0)
-        st.session_state.chat_id = chat_options[selected_chat_name]
+        chat_names = [c[1] for c in user_chats]
+        chat_ids = [c[0] for c in user_chats]
+        
+        # Запоминаем текущий выбор
+        if "chat_id" not in st.session_state:
+            st.session_state.chat_id = chat_ids[0]
+            
+        try:
+            current_index = chat_ids.index(st.session_state.chat_id)
+        except:
+            current_index = 0
+            
+        pick = st.selectbox("Переключить чат:", options=chat_names, index=current_index)
+        st.session_state.chat_id = chat_ids[chat_names.index(pick)]
+        selected_chat_id = st.session_state.chat_id
         
         if st.button("УДАЛИТЬ ТЕКУЩИЙ ЧАТ"):
             db.delete_chat(st.session_state.chat_id)
             del st.session_state.chat_id
             st.rerun()
-    else:
-        st.info("Создайте первый чат")
-        st.stop()
 
-# --- ОСНОВНОЙ ИНТЕРФЕЙС ТЕКУЩЕГО ЧАТА ---
-chat_id = st.session_state.chat_id
-st.title(f"💬 Чат: {selected_chat_name}")
+# 3. ОСНОВНОЙ ЭКРАН
+if not selected_chat_id:
+    st.title("👋 Добро пожаловать!")
+    st.info("У вас пока нет активных чатов. Создайте новый чат в меню слева (кнопка `>`), чтобы начать работу.")
+    st.stop()
 
-# Боковая панель - Файлы (в контексте текущего чата)
+# Если чат выбран, показываем интерфейс
+current_chat_name = [c[1] for c in user_chats if c[0] == selected_chat_id][0]
+st.title(f"💬 {current_chat_name}")
+
 with st.sidebar:
     st.markdown("---")
-    st.subheader("Файлы для чата")
-    temp_file = st.file_uploader("Документ (PDF)", type="pdf", key=f"file_{chat_id}")
+    st.subheader("Файлы для анализа")
+    temp_file = st.file_uploader("Загрузить PDF", type="pdf", key=f"f_{selected_chat_id}")
     temp_content = None
     if temp_file:
-        try:
-            import pypdf
-            reader = pypdf.PdfReader(temp_file)
-            temp_content = "".join([p.extract_text() + "\n" for p in reader.pages])
-            st.info("✅ Документ готов")
-        except: st.error("Ошибка PDF")
+        import pypdf
+        reader = pypdf.PdfReader(temp_file)
+        temp_content = "".join([p.extract_text() + "\n" for p in reader.pages])
 
-# --- ЛОГИКА ЧАТА ---
 @st.cache_resource
-def get_rag_engine():
+def get_engine():
     try:
         from rag_engine import RAGEngine
         return RAGEngine()
     except: return None
 
-# Загрузка истории конкретного чата
-messages = db.get_chat_history(chat_id)
-
+# История сообщений
+messages = db.get_chat_history(selected_chat_id)
 for i, msg in enumerate(messages):
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
         if msg["role"] == "assistant":
-            st.download_button("📥 TXT", msg["content"], f"chat_{chat_id}_msg_{i}.txt", key=f"dl_{chat_id}_{i}")
+            st.download_button("📥 TXT", msg["content"], f"msg_{i}.txt", key=f"dl_{selected_chat_id}_{i}")
 
-if prompt := st.chat_input("Вопрос..."):
+if prompt := st.chat_input("Спросите что-нибудь по 44-ФЗ..."):
     with st.chat_message("user"):
         st.markdown(prompt)
-    db.save_message(chat_id, "user", prompt)
+    db.save_message(selected_chat_id, "user", prompt)
     
-    with st.spinner("Анализ..."):
-        engine = get_rag_engine()
-        response = engine.query(prompt, extra_context=temp_content) if engine else "Ошибка ОИ"
+    with st.spinner("Думаю..."):
+        engine = get_engine()
+        response = engine.query(prompt, extra_context=temp_content) if engine else "Ошибка БД"
     
     with st.chat_message("assistant"):
         st.markdown(response)
-    db.save_message(chat_id, "assistant", response)
+    db.save_message(selected_chat_id, "assistant", response)
     st.rerun()
