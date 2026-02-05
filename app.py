@@ -11,6 +11,10 @@ if "DEEPSEEK_API_KEY" in st.secrets:
 
 st.set_page_config(page_title="Ассистент 44-ФЗ", page_icon="⚖️", layout="centered")
 
+# Ensure data dir exists
+if not os.path.exists("data"):
+    os.makedirs("data")
+
 # Hide Streamlit UI branding
 st.markdown("""
     <style>
@@ -63,8 +67,8 @@ with st.sidebar:
 # Engine loading
 @st.cache_resource
 def get_rag_engine():
-    from rag_engine import RAGEngine
-    return RAGEngine()
+    import rag_engine
+    return rag_engine.RAGEngine()
 
 # Chat
 if "messages" not in st.session_state:
