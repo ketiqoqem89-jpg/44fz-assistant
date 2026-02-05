@@ -5,12 +5,14 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_chroma import Chroma
 from langchain_huggingface import HuggingFaceEmbeddings
 
-# Эту функцию вызывает кнопка в приложении
+# Работаем с относительными путями для совместимости с облаком
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_DIR = os.path.join(BASE_DIR, "data", "chroma_db")
+
 def ingest_data(file_path):
     if not os.path.exists(file_path):
         return
 
-    print(f"--- Индексация файла: {os.path.basename(file_path)} ---")
     loader = PyPDFLoader(file_path)
     documents = loader.load()
     
@@ -26,17 +28,12 @@ def ingest_data(file_path):
     
     embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2")
     
-    # Добавляем в существующую базу без удаления старого
-    db_dir = "c:/Users/Николай/.gemini/antigravity/44fz/data/chroma_db"
-    db = Chroma(persist_directory=db_dir, embedding_function=embeddings)
+    db = Chroma(persist_directory=DB_DIR, embedding_function=embeddings)
     db.add_documents(chunks)
-    print(f"--- Файл добавлен в базу. ---")
 
-# Эту функцию вызывает ручной запуск в терминале
 def ingest_all_data(data_dir, db_dir):
     embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2")
     
-    # ПЕРЕСОЗДАНИЕ базы для чистоты (только при ручном запуске)
     if os.path.exists(db_dir):
         shutil.rmtree(db_dir)
     os.makedirs(db_dir, exist_ok=True)
@@ -49,5 +46,5 @@ def ingest_all_data(data_dir, db_dir):
             ingest_data(full_path)
 
 if __name__ == "__main__":
-    BASE_DIR = "c:/Users/Николай/.gemini/antigravity/44fz"
-    ingest_all_data(os.path.join(BASE_DIR, "data"), os.path.join(BASE_DIR, "data/chroma_db"))
+    local_data_dir = os.path.join(BASE_DIR, "data")
+    ingest_all_data(local_data_dir, DB_DIR)
