@@ -11,61 +11,66 @@ if "DEEPSEEK_API_KEY" in st.secrets:
 
 st.set_page_config(page_title="Юрист 44-ФЗ", page_icon="⚖️", layout="centered")
 
-# СВЕРХКОМПАКТНЫЙ CSS: Минимальные шрифты и отступы
+# ОБНОВЛЕННЫЙ CSS: Шрифт +1px, Контейнер -5%, Логин в центре
 st.markdown("""
     <style>
-    /* 1. Заголовки (12px) */
+    /* 1. Уменьшаем ширину основного окна на 5% */
+    .block-container {
+        max-width: 690px !important; 
+        padding-top: 3rem !important;
+    }
+    
+    /* 2. Шрифты */
     h1, h2, h3, [data-testid="stMarkdownContainer"] h1, [data-testid="stMarkdownContainer"] h2, [data-testid="stMarkdownContainer"] h3 { 
-        font-size: 12px !important; 
+        font-size: 13px !important; 
         font-weight: bold !important; 
         margin: 0 !important; 
-        padding: 2px 0 !important;
+        padding: 3px 0 !important;
     }
-    
-    /* 2. Текст чата и основной текст (11px) */
     .stChatMessage, .stMarkdown p, .stMarkdown td, .stMarkdown li, label { 
-        font-size: 11px !important; 
-        line-height: 1.1 !important;
+        font-size: 12px !important; 
+        line-height: 1.2 !important;
     }
-    
-    /* 3. Кнопки: Минимальный шрифт и высота */
     .stButton button { 
-        font-size: 10px !important; 
-        height: 1.8em !important; 
-        min-height: 1.8em !important;
-        padding: 0px 5px !important;
-        margin-bottom: 2px !important;
+        font-size: 11px !important; 
+        height: 2.0em !important; 
     }
-    
-    /* 4. Убираем расстояния между элементами (виджетами) */
-    [data-testid="stVerticalBlock"] {
-        gap: 0.2rem !important;
-    }
-    div[data-testid="stVerticalBlock"] > div {
-        margin-bottom: -5px !important;
-    }
-    
-    /* 5. Компактный Sidebar */
-    [data-testid="stSidebar"] .block-container {
-        padding-top: 1rem !important;
-    }
-    
-    /* 6. Инпуты (поля ввода) */
     .stTextInput input {
-        font-size: 11px !important;
-        height: 2em !important;
+        font-size: 12px !important;
+        height: 2.2em !important;
     }
+    
+    /* 3. Центрирование логина */
+    .login-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 60vh;
+        text-align: center;
+    }
+    .login-box {
+        width: 100%;
+        max-width: 300px;
+    }
+    
+    /* Уплотнение отступов */
+    [data-testid="stVerticalBlock"] { gap: 0.3rem !important; }
+    div[data-testid="stVerticalBlock"] > div { margin-bottom: -3px !important; }
     </style>
 """, unsafe_allow_html=True)
 
-# 1. АВТОРИЗАЦИЯ
+# 1. АВТОРИЗАЦИЯ (Центрированная)
 if "user_id" not in st.session_state:
-    st.markdown("### ⚖️ Вход")
-    tg_id = st.text_input("Ваш ID:", placeholder="@username")
+    st.markdown('<div class="login-container">', unsafe_allow_html=True)
+    st.markdown('<div class="login-box">', unsafe_allow_html=True)
+    st.markdown("### ⚖️ Вход в систему")
+    tg_id = st.text_input("Введите ваш ID:", placeholder="@username", label_visibility="collapsed")
     if st.button("ВОЙТИ"):
         if tg_id:
             st.session_state.user_id = tg_id
             st.rerun()
+    st.markdown('</div></div>', unsafe_allow_html=True)
     st.stop()
 
 user_id = st.session_state.user_id
@@ -96,7 +101,7 @@ with st.sidebar:
             st.session_state.chat_id = c_ids[0]
         
         idx = c_ids.index(st.session_state.chat_id)
-        pick = st.selectbox("Смена:", options=c_names, index=idx, label_visibility="collapsed")
+        pick = st.selectbox("Переключить:", options=c_names, index=idx, label_visibility="collapsed")
         st.session_state.chat_id = c_ids[c_names.index(pick)]
         
         if st.button("УДАЛИТЬ ЧАТ"):
@@ -125,7 +130,7 @@ st.markdown(f"### 💬 {current_chat_name}")
 with st.sidebar:
     st.markdown("---")
     st.markdown("**Анализ PDF**")
-    temp_file = st.file_uploader("Файл:", type="pdf", key=f"f_{selected_chat_id}", label_visibility="collapsed")
+    temp_file = st.file_uploader("Загрузить:", type="pdf", key=f"f_{selected_chat_id}", label_visibility="collapsed")
     temp_content = None
     if temp_file:
         import pypdf
@@ -146,7 +151,7 @@ for i, msg in enumerate(messages):
         if msg["role"] == "assistant":
             st.download_button("📥 TXT", msg["content"], f"m_{i}.txt", key=f"dl_{i}")
 
-if prompt := st.chat_input("Вопрос..."):
+if prompt := st.chat_input("Вопрос по 44-ФЗ..."):
     with st.chat_message("user"): st.markdown(prompt)
     db.save_message(selected_chat_id, "user", prompt)
     with st.spinner("..."):
@@ -155,4 +160,3 @@ if prompt := st.chat_input("Вопрос..."):
     with st.chat_message("assistant"): st.markdown(response)
     db.save_message(selected_chat_id, "assistant", response)
     st.rerun()
-
