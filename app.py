@@ -46,12 +46,17 @@ st.markdown("""
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        height: 60vh;
+        height: 50vh; /* Уменьшили высоту, чтобы поднять форму выше */
         text-align: center;
+        margin-top: 10vh;
     }
     .login-box {
         width: 100%;
         max-width: 300px;
+    }
+    .login-title {
+        margin-bottom: 25px !important; /* Увеличили отступ от заголовка до поля ввода */
+        display: block;
     }
     
     /* Уплотнение отступов */
@@ -64,7 +69,7 @@ st.markdown("""
 if "user_id" not in st.session_state:
     st.markdown('<div class="login-container">', unsafe_allow_html=True)
     st.markdown('<div class="login-box">', unsafe_allow_html=True)
-    st.markdown("### ⚖️ Вход в систему")
+    st.markdown('<div class="login-title">### ⚖️ Вход в систему</div>', unsafe_allow_html=True)
     tg_id = st.text_input("Введите ваш ID:", placeholder="@username", label_visibility="collapsed")
     if st.button("ВОЙТИ"):
         if tg_id:
@@ -160,3 +165,4 @@ if prompt := st.chat_input("Вопрос по 44-ФЗ..."):
     with st.chat_message("assistant"): st.markdown(response)
     db.save_message(selected_chat_id, "assistant", response)
     st.rerun()
+
