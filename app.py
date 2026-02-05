@@ -3,6 +3,7 @@ import streamlit as st
 from dotenv import load_dotenv
 import database as db
 
+# Полный сброс настроек интерфейса для возврата стандартной плашки
 load_dotenv()
 db.init_db()
 
@@ -11,35 +12,20 @@ if "DEEPSEEK_API_KEY" in st.secrets:
 
 st.set_page_config(page_title="Юрист 44-ФЗ", page_icon="⚖️", layout="centered")
 
-# ЖЕСТКИЙ CSS ДЛЯ ВОЗВРАТА МЕНЮ
+# CSS: РАБОТАЕМ ТОЛЬКО СО ШРИФТАМИ, ПЛАШКУ НЕ ТРОГАЕМ
 st.markdown("""
     <style>
-    /* 1. ПРИНУДИТЕЛЬНО ПОКАЗЫВАЕМ ШАПКУ И КНОПКУ МЕНЮ */
-    header[data-testid="stHeader"] {
-        visibility: visible !important;
-        display: flex !important;
-        background-color: rgba(0,0,0,0.5) !important; /* Темная полупрозрачная полоса сверху */
-        height: 3.5rem !important;
-    }
+    /* Скрываем только нижние плавающие кнопки (корону и т.д.) */
+    .stAppToolbar, [data-testid="stStatusWidget"], footer { display: none !important; }
     
-    /* 2. ДЕЛАЕМ ИКОНКУ МЕНЮ БЕЛОЙ И ВИДИМОЙ */
-    header button {
-        visibility: visible !important;
-        color: white !important;
-    }
-
-    /* 3. СКРЫВАЕМ ТОЛЬКО КНОПКУ DEPLOY (она мешает) */
+    /* Скрываем кнопку Deploy, но не трогаем сам Header */
     .stAppDeployButton { display: none !important; }
-    
-    /* 4. СКРЫВАЕМ НИЖНИЙ МУСОР (корону и т.д.) */
-    .stAppToolbar, [data-testid="stStatusWidget"], footer { display: none !important; visibility: hidden !important; }
 
-    /* 5. УЛЬТРА-КОМПАКТНЫЕ ШРИФТЫ (14px заголовки, 12px текст) */
+    /* УЛЬТРА-КОМПАКТНЫЕ ШРИФТЫ (14px заголовки, 12px текст) */
     h1, h2, h3, [data-testid="stMarkdownContainer"] h1, [data-testid="stMarkdownContainer"] h2, [data-testid="stMarkdownContainer"] h3 { 
         font-size: 14px !important; 
         font-weight: bold !important; 
-        margin: 0 !important; 
-        padding: 0 !important;
+        margin-bottom: 5px !important;
     }
     
     .stChatMessage, .stMarkdown p, .stMarkdown td, .stMarkdown li { font-size: 12px !important; }
@@ -47,8 +33,8 @@ st.markdown("""
     /* Кнопки */
     .stButton button { width: 100%; border-radius: 6px; height: 2.2em; font-size: 11px !important; }
     
-    /* Отступ чтобы текст не залезал под черную полоску меню */
-    .block-container { padding-top: 4.5rem !important; }
+    /* Стандартный отступ для контента */
+    .block-container { padding-top: 2rem !important; }
     </style>
 """, unsafe_allow_html=True)
 
