@@ -13,3 +13,5 @@ googlesearch-python
 requests
 beautifulsoup4
 torch
+fpdf2
+datetime

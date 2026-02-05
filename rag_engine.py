@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 from langchain_chroma import Chroma
 from langchain_openai import ChatOpenAI
 from langchain_huggingface import HuggingFaceEmbeddings
@@ -7,7 +8,6 @@ from langchain_core.output_parsers import StrOutputParser
 
 class RAGEngine:
     def __init__(self):
-        # Относительный путь для облака
         self.base_dir = os.path.dirname(os.path.abspath(__file__))
         self.db_path = os.path.join(self.base_dir, "data", "chroma_db")
         self.embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2")
@@ -32,6 +32,7 @@ class RAGEngine:
             return "База знаний не найдена."
         
         try:
+            today = datetime.now().strftime("%d.%m.%Y")
             search_query = question
             if "приемк" in question.lower():
                 search_query = f"{question} Статья 94 приемка сроки"
@@ -46,24 +47,27 @@ class RAGEngine:
             
             work_doc_section = ""
             if extra_context:
-                work_doc_section = f"\n=== РАБОЧИЙ ДОКУМЕНТ ПОЛЬЗОВАТЕЛЯ (для анализа) ===\n{extra_context}\n"
+                work_doc_section = f"\n=== РАБОЧИЙ ДОКУМЕНТ ПОЛЬЗОВАТЕЛЯ ДЛЯ АНАЛИЗА ===\n{extra_context}\n"
 
-            template = """Вы — эксперт-юрист по 44-ФЗ. 
-            РЕЖИМ: Absolute Mode. Исключить эмодзи, вводные слова, вежливость, предложения помощи и любые переходные фразы. 
-            Стиль: предельно сухой, директивный, фактический. Никаких вопросов в конце. Завершать ответ немедленно после изложения сути.
-            Ответ на русском языке.
+            template = """Вы — эксперт-юрист по 44-ФЗ. Сегодня: {today}.
+            РЕЖИМ: Absolute Mode. Исключить эмодзи и вежливость.
+            
+            ДОПОЛНИТЕЛЬНЫЕ ИНСТРУКЦИИ:
+            1. ТАБЛИЦА РИСКОВ: Если прислан 'РАБОЧИЙ ДОКУМЕНТ', начни ответ с Markdown-таблицы: 
+               | Пункт договора | Статья 44-ФЗ | Оценка (ОК/Нарушение/Риск) | Комментарий |
+            2. КАЛЬКУЛЯТОР СРОКОВ: Если в законе указан срок (напр. 5 дней), рассчитай дату от сегодня ({today}) и укажи её в скобках. Различай рабочие и календарные дни.
+            3. ЦИТИРОВАНИЕ: Ссылка на статью обязательна.
 
             ТЕКУЩИЙ КОНТЕКСТ ЗАКОНОДАТЕЛЬСТВА:
             {laws_context}
             {work_doc_section}
-            
-            ЗАДАЧА: Ответь на вопрос на основе контекста. Если прислан 'РАБОЧИЙ ДОКУМЕНТ', проанализируй его на соответствие 'КОНТЕКСТУ ЗАКОНОДАТЕЛЬСТВА'.
             
             Вопрос: {question}
             Ответ:"""
             
             chain = ChatPromptTemplate.from_template(template) | self.llm | StrOutputParser()
             return chain.invoke({
+                "today": today,
                 "laws_context": laws_context, 
                 "work_doc_section": work_doc_section,
                 "question": question
