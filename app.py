@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
-# API Key for cloud
+# API Key check
 if "DEEPSEEK_API_KEY" in st.secrets:
     os.environ["DEEPSEEK_API_KEY"] = st.secrets["DEEPSEEK_API_KEY"]
 
@@ -15,53 +15,58 @@ st.set_page_config(page_title="Ассистент 44-ФЗ", page_icon="⚖️", 
 if not os.path.exists("data"):
     os.makedirs("data")
 
-# Агрессивное скрытие брендинга Streamlit
+# Скрытие брендинга и установка сверхкомпактного шрифта 12px
 st.markdown("""
     <style>
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
-    .stAppDeployButton {display:none;}
-    .reportview-container .main footer {display:none;}
-    .stChatMessage { font-size: 16px !important; }
-    .stButton button { width: 100%; border-radius: 10px; height: 3.5em; font-weight: bold; }
+    /* Скрываем лишее */
+    header, footer, #MainMenu {visibility: hidden !important; display: none !important;}
+    .stAppDeployButton {display:none !important;}
+    [data-testid="stStatusWidget"] {display:none !important;}
+    .stAppToolbar {display:none !important;}
+    
+    /* Ультра-компактные шрифты */
+    .stChatMessage { font-size: 12px !important; }
+    .stButton button { width: 100%; border-radius: 6px; height: 2.5em; font-size: 12px !important; }
+    .stMarkdown p, .stMarkdown li { font-size: 12px !important; }
+    
+    /* Компактный отступ сверху */
+    .block-container {padding-top: 1rem !important;}
     </style>
 """, unsafe_allow_html=True)
 
 st.title("⚖️ Ассистент 44-ФЗ")
 
-# Sidebar - Кнопки загрузки файлов (на телефоне нажать на > слева вверху)
+# --- БОКОВОЕ МЕНЮ (SIDEBAR) ---
 with st.sidebar:
-    st.header("🗂 Работа с файлами")
+    st.header("🗂 Файлы и настройки")
     
-    # 1. Постоянная база
+    # Режим базы
     st.subheader("База знаний")
-    uploaded_file = st.file_uploader("Добавить закон навсегда (PDF)", type="pdf", key="perm")
-    if uploaded_file is not None:
-        if st.button("СОХРАНИТЬ В БАЗУ"):
-            with st.spinner("Загрузка..."):
-                try:
-                    save_path = os.path.join("data", uploaded_file.name)
-                    with open(save_path, "wb") as f:
-                        f.write(uploaded_file.getbuffer())
-                    from data_ingest import ingest_data
-                    ingest_data(save_path)
-                    st.success("Готово! Файл в базе.")
-                except Exception as e:
-                    st.error(f"Ошибка: {e}")
+    perm_file = st.file_uploader("Добавить закон (PDF)", type="pdf", key="perm")
+    if perm_file and st.button("СОХРАНИТЬ В БАЗУ"):
+        with st.spinner("Загрузка..."):
+            try:
+                save_path = os.path.join("data", perm_file.name)
+                with open(save_path, "wb") as f:
+                    f.write(perm_file.getbuffer())
+                import data_ingest
+                data_ingest.ingest_data(save_path)
+                st.success("Готово.")
+            except Exception as e:
+                st.error(f"Ошибка: {e}")
 
     st.markdown("---")
     
-    # 2. Временный анализ
-    st.subheader("Анализ документа")
-    analysis_file = st.file_uploader("Проверить текущий проект (PDF)", type="pdf", key="temp")
+    # Режим анализа
+    st.subheader("Анализ проекта")
+    temp_file = st.file_uploader("Проверить документ (PDF)", type="pdf", key="temp")
     temp_content = None
-    if analysis_file is not None:
+    if temp_file:
         try:
             import pypdf
-            reader = pypdf.PdfReader(analysis_file)
+            reader = pypdf.PdfReader(temp_file)
             temp_content = "".join([p.extract_text() + "\n" for p in reader.pages])
-            st.info("✅ Документ подгружен. Задайте вопрос в чате.")
+            st.info("✅ Документ подгружен.")
         except Exception as e:
             st.error(f"Ошибка: {e}")
 
@@ -70,13 +75,16 @@ with st.sidebar:
         st.session_state.messages = []
         st.rerun()
 
-# Engine loading
+# --- ЛОГИКА ЧАТА ---
 @st.cache_resource
 def get_rag_engine():
-    import rag_engine
-    return rag_engine.RAGEngine()
+    try:
+        from rag_engine import RAGEngine
+        return RAGEngine()
+    except Exception as e:
+        st.error(f"Ошибка системы: {e}")
+        return None
 
-# Chat
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
@@ -92,9 +100,12 @@ if prompt := st.chat_input("Напишите ваш вопрос..."):
     with st.spinner("Анализирую..."):
         try:
             engine = get_rag_engine()
-            response = engine.query(prompt, extra_context=temp_content)
+            if engine:
+                response = engine.query(prompt, extra_context=temp_content)
+            else:
+                response = "Ошибка инициализации."
         except Exception as e:
-            response = f"Ошибка связи с базой: {e}"
+            response = f"Ошибка: {e}"
 
     st.session_state.messages.append({"role": "assistant", "content": response})
     with st.chat_message("assistant"):
