@@ -12,15 +12,24 @@ if "DEEPSEEK_API_KEY" in st.secrets:
 
 st.set_page_config(page_title="Юрист 44-ФЗ", page_icon="⚖️", layout="centered")
 
-# CSS для скрытия брендинга (оставили только самое важное)
+# Исправленный CSS: Убираем мусор, но оставляем кнопку МЕНЮ
 st.markdown("""
     <style>
-    header, footer, #MainMenu {visibility: hidden !important; display: none !important;}
+    /* Скрываем только лишние кнопки в шапке, но оставляем саму шапку для кнопки меню */
     .stAppDeployButton {display:none !important;}
+    [data-testid="stHeader"] {background: transparent !important;}
+    #MainMenu {visibility: hidden !important;}
+    footer {visibility: hidden !important;}
+    
+    /* Скрываем плавающие кнопки Streamlit внизу (корону и прочее) */
+    .stAppToolbar {display:none !important;}
+    [data-testid="stStatusWidget"] {display:none !important;}
+
+    /* Шрифты и кнопки */
     .stChatMessage { font-size: 12px !important; }
-    .stButton button { width: 100%; border-radius: 6px; height: 2.5em; font-size: 12px !important; }
+    .stButton button { width: 100%; border-radius: 6px; height: 2.8em; font-size: 12px !important; font-weight: bold; }
     .stMarkdown p, .stMarkdown td { font-size: 11px !important; }
-    .block-container {padding-top: 1rem !important;}
+    .block-container {padding-top: 2rem !important;}
     </style>
 """, unsafe_allow_html=True)
 
@@ -50,9 +59,8 @@ with st.sidebar:
     
     user_chats = db.get_user_chats(user_id)
     
-    # Поле создания чата всегда активно
-    new_name = st.text_input("Название чата:", placeholder="Напр: Контракт 1", key="new_chat_input")
-    if st.button("СОЗДАТЬ ЧАТ"):
+    new_name = st.text_input("Название чата:", placeholder="Напр: Контракт 1")
+    if st.button("СОЗДАТЬ ЧАТ", key="sidebar_create"):
         if new_name:
             res = db.create_chat(user_id, new_name)
             if res:
@@ -66,16 +74,11 @@ with st.sidebar:
         chat_names = [c[1] for c in user_chats]
         chat_ids = [c[0] for c in user_chats]
         
-        # Запоминаем текущий выбор
-        if "chat_id" not in st.session_state:
+        if "chat_id" not in st.session_state or st.session_state.chat_id not in chat_ids:
             st.session_state.chat_id = chat_ids[0]
             
-        try:
-            current_index = chat_ids.index(st.session_state.chat_id)
-        except:
-            current_index = 0
-            
-        pick = st.selectbox("Переключить чат:", options=chat_names, index=current_index)
+        current_index = chat_ids.index(st.session_state.chat_id)
+        pick = st.selectbox("Ваши чаты:", options=chat_names, index=current_index)
         st.session_state.chat_id = chat_ids[chat_names.index(pick)]
         selected_chat_id = st.session_state.chat_id
         
@@ -84,13 +87,21 @@ with st.sidebar:
             del st.session_state.chat_id
             st.rerun()
 
-# 3. ОСНОВНОЙ ЭКРАН
+# 3. ЭКРАН ПРИВЕТСТВИЯ (если чатов нет)
 if not selected_chat_id:
     st.title("👋 Добро пожаловать!")
-    st.info("У вас пока нет активных чатов. Создайте новый чат в меню слева (кнопка `>`), чтобы начать работу.")
+    st.write("Создайте ваш первый чат, чтобы начать работу:")
+    welcome_name = st.text_input("Название первого чата:", placeholder="Напр: Общий чат", key="welcome_name")
+    if st.button("СОЗДАТЬ И НАЧАТЬ", key="welcome_button"):
+        if welcome_name:
+            res = db.create_chat(user_id, welcome_name)
+            if res:
+                st.session_state.chat_id = res
+                st.rerun()
+    st.info("Или откройте меню (иконка ☰ в углу) для настроек.")
     st.stop()
 
-# Если чат выбран, показываем интерфейс
+# 4. РАБОЧИЙ ЭКРАН ЧАТА
 current_chat_name = [c[1] for c in user_chats if c[0] == selected_chat_id][0]
 st.title(f"💬 {current_chat_name}")
 
@@ -111,7 +122,7 @@ def get_engine():
         return RAGEngine()
     except: return None
 
-# История сообщений
+# Вывод сообщений
 messages = db.get_chat_history(selected_chat_id)
 for i, msg in enumerate(messages):
     with st.chat_message(msg["role"]):
@@ -119,7 +130,7 @@ for i, msg in enumerate(messages):
         if msg["role"] == "assistant":
             st.download_button("📥 TXT", msg["content"], f"msg_{i}.txt", key=f"dl_{selected_chat_id}_{i}")
 
-if prompt := st.chat_input("Спросите что-нибудь по 44-ФЗ..."):
+if prompt := st.chat_input("Напишите вопрос по 44-ФЗ..."):
     with st.chat_message("user"):
         st.markdown(prompt)
     db.save_message(selected_chat_id, "user", prompt)
