@@ -12,9 +12,18 @@ load_dotenv()
 if "DEEPSEEK_API_KEY" in st.secrets:
     os.environ["DEEPSEEK_API_KEY"] = st.secrets["DEEPSEEK_API_KEY"]
 
-st.set_page_config(page_title="Ассистент Юриста 44-ФЗ", page_icon="⚖️")
+st.set_page_config(page_title="Ассистент Юриста 44-ФЗ", page_icon="⚖️", layout="centered")
 
-st.title("⚖️ Ассистент Юриста по 44-ФЗ")
+# Мобильная оптимизация стилей
+st.markdown("""
+    <style>
+    .stChatMessage { font-size: 16px !important; }
+    .stButton button { width: 100%; border-radius: 10px; height: 3em; }
+    [data-testid="stSidebar"] { width: 300px !important; }
+    </style>
+""", unsafe_allow_html=True)
+
+st.title("⚖️ Ассистент Юриста 44-ФЗ")
 
 st.markdown("""
 Этот ассистент помогает отвечать на вопросы по 44-ФЗ и искать судебную практику.
