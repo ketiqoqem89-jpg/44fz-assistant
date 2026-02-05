@@ -1,0 +1,13 @@
+streamlit
+langchain
+langchain-community
+langchain-openai
+langchain-huggingface
+chromadb
+pypdf
+python-dotenv
+tiktoken
+sentence-transformers
+googlesearch-python
+requests
+beautifulsoup4
