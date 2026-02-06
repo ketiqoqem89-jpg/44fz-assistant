@@ -15,259 +15,285 @@ st.set_page_config(
     page_title="Юрист 44-ФЗ", 
     page_icon="⚖️", 
     layout="wide",
-    initial_sidebar_state="collapsed"  # На мобильных боковая панель скрыта
+    initial_sidebar_state="collapsed"
 )
 
-# --- МОБИЛЬНАЯ ОПТИМИЗАЦИЯ ДЛЯ IPHONE 13 PRO MAX ---
-st.markdown("""
+# Инициализация темы
+if "theme" not in st.session_state:
+    st.session_state.theme = "dark"
+
+# Функция смены темы
+def change_theme(theme_name):
+    st.session_state.theme = theme_name
+    st.rerun()
+
+# --- СТИЛИ ДЛЯ РАЗНЫХ ТЕМ ---
+themes = {
+    "dark": {
+        "background": "#0A0A0A",
+        "text": "#FFFFFF",
+        "input_bg": "#1A1A1A",
+        "border": "#2A2A2A",
+        "primary": "#4081FF",
+        "sidebar_bg": "#111111",
+        "message_user": "#4081FF",
+        "message_assistant": "#1A1A1A"
+    },
+    "light": {
+        "background": "#FFFFFF",
+        "text": "#000000", 
+        "input_bg": "#F5F5F5",
+        "border": "#DDDDDD",
+        "primary": "#4081FF",
+        "sidebar_bg": "#F8F9FA",
+        "message_user": "#4081FF",
+        "message_assistant": "#F0F0F0"
+    },
+    "blue": {
+        "background": "#0F172A",
+        "text": "#E2E8F0",
+        "input_bg": "#1E293B",
+        "border": "#334155",
+        "primary": "#3B82F6",
+        "sidebar_bg": "#1E293B",
+        "message_user": "#3B82F6",
+        "message_assistant": "#1E293B"
+    },
+    "green": {
+        "background": "#0A1F0A",
+        "text": "#F0FFF0",
+        "input_bg": "#1A2A1A",
+        "border": "#2A3A2A",
+        "primary": "#10B981",
+        "sidebar_bg": "#1A2A1A",
+        "message_user": "#10B981",
+        "message_assistant": "#1A2A1A"
+    }
+}
+
+current_theme = themes[st.session_state.theme]
+
+# --- АДАПТИВНЫЕ СТИЛИ ---
+st.markdown(f"""
 <style>
-    /* БАЗОВЫЕ НАСТРОЙКИ ДЛЯ МОБИЛЬНЫХ */
-    @media (max-width: 430px) {
-        /* Основные настройки контейнера */
-        .stApp {
-            background-color: #0A0A0A !important;
-            color: #FFFFFF !important;
-            min-height: 100vh;
-            padding-bottom: 80px !important; /* Для поля ввода */
-        }
-        
-        /* Скрываем лишние элементы */
-        .stAppDeployButton, 
-        footer, 
-        [data-testid="stStatusWidget"], 
-        [data-testid="stDecoration"],
-        [data-testid="stHeader"] {
-            display: none !important;
-        }
-        
-        /* Основной контейнер контента */
-        .main .block-container {
-            padding-top: 20px !important;
-            padding-left: 15px !important;
-            padding-right: 15px !important;
-            padding-bottom: 20px !important;
-            max-width: 100% !important;
-        }
-        
-        /* ЦЕНТРАЛЬНЫЙ ЛОГОТИП (оптимизирован для мобильных) */
-        .hero-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 60vh;
-            text-align: center;
-            padding: 20px;
-        }
-        .whale-logo {
-            width: 60px;
-            height: 60px;
-            background: url('https://chat.deepseek.com/favicon.svg') no-repeat center;
-            background-size: contain;
-            margin-bottom: 15px;
-            filter: drop-shadow(0 0 10px #4081FF);
-        }
-        .hero-title { 
-            font-size: 18px !important; 
-            font-weight: 600; 
-            color: #FFFFFF; 
-            margin-bottom: 20px;
-        }
-        
-        /* ПОЛЕ ВВОДА - фиксированное внизу */
-        .stChatInput {
-            position: fixed !important;
-            bottom: 0 !important;
-            left: 0 !important;
-            right: 0 !important;
-            width: 100% !important;
-            background-color: #0A0A0A !important;
-            padding: 10px 15px !important;
-            z-index: 999;
-            border-top: 1px solid #2A2A2A !important;
-        }
-        
-        .stChatInput > div {
-            max-width: 100% !important;
-            margin: 0 !important;
-        }
-        
-        .stChatInput textarea {
-            background-color: #1A1A1A !important;
-            border: 1px solid #2A2A2A !important;
-            border-radius: 20px !important;
-            color: #FFFFFF !important;
-            font-size: 16px !important; /* Больше для мобильных */
-            min-height: 50px !important;
-            padding: 12px 45px 12px 15px !important;
-        }
-        
-        /* Кнопка отправки в поле ввода */
-        .stChatInput button {
-            position: absolute !important;
-            right: 20px !important;
-            bottom: 10px !important;
-            background: transparent !important;
-            border: none !important;
-            color: #4081FF !important;
-            font-size: 24px !important;
-        }
-        
-        /* ОБЛАЧКА ЧАТА */
-        .stChatMessage {
-            max-width: 85% !important;
-            margin: 8px 0 !important;
-        }
-        
-        /* Сообщения пользователя - справа */
-        [data-testid="stChatMessage"][data-message-author="user"] {
-            margin-left: auto !important;
-            margin-right: 0 !important;
-            background-color: #4081FF !important;
-            border-radius: 18px 18px 4px 18px !important;
-            padding: 12px 15px !important;
-        }
-        
-        /* Сообщения ассистента - слева */
-        [data-testid="stChatMessage"][data-message-author="assistant"] {
-            margin-right: auto !important;
-            margin-left: 0 !important;
-            background-color: #1A1A1A !important;
-            border-radius: 18px 18px 18px 4px !important;
-            padding: 12px 15px !important;
-        }
-        
-        .stMarkdown p {
-            font-size: 15px !important; /* Увеличиваем шрифт */
-            line-height: 1.4 !important;
-            margin: 0 !important;
-        }
-        
-        /* Кнопки скачивания в сообщениях */
-        .stDownloadButton {
-            margin-top: 8px !important;
-        }
-        
-        .stDownloadButton button {
-            font-size: 12px !important;
-            padding: 5px 10px !important;
-            border-radius: 10px !important;
-            background-color: transparent !important;
-            border: 1px solid #4081FF !important;
-            color: #4081FF !important;
-        }
-        
-        /* ЭКРАН АВТОРИЗАЦИИ */
-        .stTextInput input {
-            font-size: 16px !important;
-            height: 50px !important;
-            border-radius: 12px !important;
-            background-color: #1A1A1A !important;
-            border: 1px solid #2A2A2A !important;
-            color: #FFFFFF !important;
-        }
-        
-        .stButton button {
-            width: 100% !important;
-            height: 50px !important;
-            border-radius: 12px !important;
-            background-color: #4081FF !important;
-            color: white !important;
-            font-size: 16px !important;
-            font-weight: 600 !important;
-            border: none !important;
-        }
-        
-        /* БОКОВАЯ ПАНЕЛЬ (мобильное меню) */
-        .stSidebar {
-            width: 85% !important;
-            min-width: 0 !important;
-        }
-        
-        /* Кнопка открытия боковой панели */
-        .sidebar-toggle {
-            position: fixed !important;
-            top: 15px !important;
-            left: 15px !important;
-            z-index: 1000 !important;
-            background-color: #1A1A1A !important;
-            border-radius: 50% !important;
-            width: 40px !important;
-            height: 40px !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            border: none !important;
-            color: white !important;
-            font-size: 20px !important;
-        }
-    }
+    /* ОСНОВНЫЕ СТИЛИ */
+    .stApp {{
+        background-color: {current_theme["background"]} !important;
+        color: {current_theme["text"]} !important;
+    }}
     
-    /* Для десктопов - сохраняем старый дизайн */
-    @media (min-width: 431px) {
-        .stApp {
-            background-color: #0A0A0A !important;
-            color: #FFFFFF !important;
-        }
+    /* СОХРАНЯЕМ ВЕРХНЮЮ ПЛАНКУ */
+    header[data-testid="stHeader"] {{
+        background-color: {current_theme["background"]} !important;
+        border-bottom: 1px solid {current_theme["border"]} !important;
+    }}
+    
+    /* ИКОНКИ В ШАПКЕ */
+    header[data-testid="stHeader"] button {{
+        color: {current_theme["text"]} !important;
+    }}
+    
+    /* СКРЫВАЕМ НЕНУЖНЫЕ ЭЛЕМЕНТЫ */
+    .stAppDeployButton, footer, [data-testid="stDecoration"] {{
+        display: none !important;
+    }}
+    
+    /* ГЛАВНЫЙ КОНТЕЙНЕР */
+    .main .block-container {{
+        padding-top: 2rem !important;
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+        max-width: 100% !important;
+    }}
+    
+    /* ЦЕНТРАЛЬНЫЙ ЛОГОТИП */
+    .hero-container {{
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 50vh;
+        text-align: center;
+        padding: 20px;
+    }}
+    
+    .whale-logo {{
+        width: 60px;
+        height: 60px;
+        background: url('https://chat.deepseek.com/favicon.svg') no-repeat center;
+        background-size: contain;
+        margin-bottom: 15px;
+        filter: drop-shadow(0 0 10px {current_theme["primary"]});
+    }}
+    
+    .hero-title {{
+        font-size: 18px !important;
+        font-weight: 600 !important;
+        color: {current_theme["text"]} !important;
+        margin-bottom: 10px !important;
+    }}
+    
+    /* ПОЛЕ ВВОДА */
+    .stChatInput {{
+        position: fixed !important;
+        bottom: 20px !important;
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        width: 90% !important;
+        max-width: 600px !important;
+        background: transparent !important;
+        border: none !important;
+    }}
+    
+    .stChatInput textarea {{
+        background-color: {current_theme["input_bg"]} !important;
+        border: 1px solid {current_theme["border"]} !important;
+        border-radius: 20px !important;
+        color: {current_theme["text"]} !important;
+        font-size: 14px !important;
+        min-height: 50px !important;
+        padding: 12px 20px !important;
+    }}
+    
+    /* СООБЩЕНИЯ ЧАТА */
+    .stChatMessage {{
+        max-width: 80% !important;
+        margin: 8px 0 !important;
+    }}
+    
+    /* Сообщения пользователя */
+    [data-testid="stChatMessage"][data-message-author="user"] {{
+        margin-left: auto !important;
+        margin-right: 0 !important;
+        background-color: {current_theme["message_user"]} !important;
+        border-radius: 18px 18px 4px 18px !important;
+        padding: 12px 16px !important;
+    }}
+    
+    [data-testid="stChatMessage"][data-message-author="user"] p {{
+        color: white !important;
+        font-weight: 500 !important;
+    }}
+    
+    /* Сообщения ассистента */
+    [data-testid="stChatMessage"][data-message-author="assistant"] {{
+        margin-right: auto !important;
+        margin-left: 0 !important;
+        background-color: {current_theme["message_assistant"]} !important;
+        border-radius: 18px 18px 18px 4px !important;
+        padding: 12px 16px !important;
+        border: 1px solid {current_theme["border"]} !important;
+    }}
+    
+    [data-testid="stChatMessage"][data-message-author="assistant"] p {{
+        color: {current_theme["text"]} !important;
+        font-weight: 400 !important;
+        line-height: 1.5 !important;
+    }}
+    
+    .stMarkdown p {{
+        font-size: 14px !important;
+        line-height: 1.4 !important;
+        margin: 0 !important;
+    }}
+    
+    /* КНОПКИ СКАЧИВАНИЯ */
+    .stDownloadButton button {{
+        font-size: 12px !important;
+        padding: 6px 12px !important;
+        border-radius: 10px !important;
+        background-color: transparent !important;
+        border: 1px solid {current_theme["primary"]} !important;
+        color: {current_theme["primary"]} !important;
+        margin-top: 8px !important;
+    }}
+    
+    /* ЭКРАН АВТОРИЗАЦИИ */
+    .stTextInput input {{
+        background-color: {current_theme["input_bg"]} !important;
+        border: 1px solid {current_theme["border"]} !important;
+        color: {current_theme["text"]} !important;
+        border-radius: 12px !important;
+        font-size: 14px !important;
+    }}
+    
+    .stButton button {{
+        background-color: {current_theme["primary"]} !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 12px !important;
+        font-size: 14px !important;
+        font-weight: 600 !important;
+    }}
+    
+    /* БОКОВАЯ ПАНЕЛЬ */
+    section[data-testid="stSidebar"] {{
+        background-color: {current_theme["sidebar_bg"]} !important;
+    }}
+    
+    .stSidebar .stButton button {{
+        background-color: {current_theme["input_bg"]} !important;
+        color: {current_theme["text"]} !important;
+        border: 1px solid {current_theme["border"]} !important;
+    }}
+    
+    /* КНОПКА МЕНЮ ДЛЯ МОБИЛЬНЫХ */
+    .mobile-menu-btn {{
+        position: fixed !important;
+        top: 10px !important;
+        left: 10px !important;
+        z-index: 1000 !important;
+        background-color: {current_theme["input_bg"]} !important;
+        border: 1px solid {current_theme["border"]} !important;
+        border-radius: 8px !important;
+        color: {current_theme["text"]} !important;
+        padding: 8px 12px !important;
+        font-size: 14px !important;
+    }}
+    
+    /* АДАПТИВНОСТЬ ДЛЯ МОБИЛЬНЫХ */
+    @media (max-width: 430px) {{
+        .stChatInput {{
+            width: 95% !important;
+            bottom: 10px !important;
+        }}
         
-        .stAppDeployButton, footer, [data-testid="stStatusWidget"], [data-testid="stDecoration"] {
-            display: none !important;
-        }
+        .stChatInput textarea {{
+            font-size: 16px !important;
+        }}
         
-        header[data-testid="stHeader"] {
-            background-color: #0A0A0A !important;
-            border-bottom: 1px solid #1A1A1A !important;
-        }
+        .stChatMessage {{
+            max-width: 85% !important;
+        }}
         
-        .hero-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 60vh;
-            text-align: center;
-        }
+        .stMarkdown p {{
+            font-size: 15px !important;
+        }}
         
-        .whale-logo {
-            width: 70px;
-            height: 70px;
-            background: url('https://chat.deepseek.com/favicon.svg') no-repeat center;
-            background-size: contain;
-            margin-bottom: 15px;
-            filter: drop-shadow(0 0 10px #4081FF);
-        }
-        
-        .hero-title { 
-            font-size: 18px; 
-            font-weight: 600; 
-            color: #FFFFFF; 
-        }
-        
-        .stChatInput textarea {
-            background-color: #1A1A1A !important;
-            border: 1px solid #2A2A2A !important;
-            border-radius: 12px !important;
-            color: #FFFFFF !important;
-        }
-        
-        [data-testid="stChatMessage"] { 
-            background-color: transparent !important; 
-        }
-        
-        .stMarkdown p { 
-            font-size: 13px !important; 
-            line-height: 1.4 !important; 
-        }
-        
-        .block-container { 
-            padding-top: 4rem !important; 
-            max-width: 650px !important; 
-        }
-        
-        .sidebar-toggle {
-            display: none !important;
-        }
-    }
+        .hero-container {{
+            min-height: 40vh;
+        }}
+    }}
+    
+    /* ПЕРЕКЛЮЧАТЕЛИ ТЕМ */
+    .theme-btn {{
+        display: inline-block;
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        margin: 2px;
+        cursor: pointer;
+        border: 2px solid transparent;
+    }}
+    
+    .theme-btn.active {{
+        border: 2px solid white;
+    }}
+    
+    .theme-btn.dark {{ background-color: #0A0A0A; }}
+    .theme-btn.light {{ background-color: #FFFFFF; }}
+    .theme-btn.blue {{ background-color: #0F172A; }}
+    .theme-btn.green {{ background-color: #0A1F0A; }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -286,24 +312,43 @@ if "user_id" not in st.session_state:
 
 user_id = st.session_state.user_id
 
-# Мобильная кнопка меню (только на мобильных)
+# Кнопка мобильного меню
 st.markdown("""
-<button class="sidebar-toggle" onclick="document.querySelector('[data-testid=\"stSidebar\"]').style.display = 'block'">☰</button>
+<button class="mobile-menu-btn" onclick="document.querySelector('[data-testid=\"stSidebar\"]').style.display = 'block'">☰ Меню</button>
 """, unsafe_allow_html=True)
 
-# 2. SIDEBAR
+# 2. БОКОВАЯ ПАНЕЛЬ
 with st.sidebar:
-    # Кнопка закрытия на мобильных
+    # Кнопка закрытия для мобильных
     st.markdown("""
-    <div style="text-align: right; margin-bottom: 20px;">
+    <div style="text-align: right; margin-bottom: 10px;">
         <button onclick="document.querySelector('[data-testid=\"stSidebar\"]').style.display = 'none'" 
-                style="background: none; border: none; color: white; font-size: 20px; cursor: pointer;">✕</button>
+                style="background: none; border: none; color: inherit; font-size: 20px; cursor: pointer;">✕</button>
     </div>
     """, unsafe_allow_html=True)
     
-    st.markdown(f"**👤 {user_id}**")
+    # Профиль пользователя
+    st.markdown(f"### 👤 {user_id}")
+    st.markdown("---")
     
-    col1, col2 = st.columns([1, 1])
+    # Переключатель тем
+    st.subheader("🎨 Тема")
+    cols = st.columns(4)
+    themes_list = list(themes.keys())
+    for idx, theme_name in enumerate(themes_list):
+        with cols[idx]:
+            is_active = "active" if st.session_state.theme == theme_name else ""
+            st.markdown(f"""
+            <div class="theme-btn {theme_name} {is_active}" 
+                 onclick="window.location.href='?theme={theme_name}'"
+                 title="{theme_name.capitalize()} тема"></div>
+            """, unsafe_allow_html=True)
+            st.caption(theme_name.capitalize())
+    
+    st.markdown("---")
+    
+    # Кнопки управления профилем
+    col1, col2 = st.columns(2)
     with col1:
         if st.button("📱 Профиль", use_container_width=True):
             st.info("Раздел в разработке")
@@ -315,7 +360,7 @@ with st.sidebar:
     
     st.markdown("---")
     
-    # Файлы для анализа
+    # Загрузка файлов
     st.subheader("📁 Анализ документа")
     pdf_file = st.file_uploader("Загрузить PDF", type="pdf", label_visibility="collapsed")
     extra_context = None
@@ -325,10 +370,12 @@ with st.sidebar:
             reader = pypdf.PdfReader(pdf_file)
             extra_context = "".join([p.extract_text() + "\n" for p in reader.pages])
             st.success("✅ Документ загружен")
-        except:
-            st.error("❌ Ошибка загрузки PDF")
+        except Exception as e:
+            st.error(f"❌ Ошибка: {str(e)}")
     
     st.markdown("---")
+    
+    # Управление чатами
     st.subheader("📚 Мои чаты")
     
     user_chats = db.get_user_chats(user_id)
@@ -344,14 +391,17 @@ with st.sidebar:
                           label_visibility="collapsed")
         st.session_state.chat_id = c_ids[c_names.index(pick)]
         
-        col_del, col_new = st.columns([1, 1])
+        col_del, col_rename = st.columns(2)
         with col_del:
             if st.button("🗑️ Удалить", use_container_width=True):
                 db.delete_chat(st.session_state.chat_id)
                 del st.session_state.chat_id
                 st.rerun()
+        with col_rename:
+            if st.button("✏️ Переименовать", use_container_width=True):
+                st.info("Функция в разработке")
     
-    new_chat = st.text_input("Название нового чата:", placeholder="Введите название...", 
+    new_chat = st.text_input("Новый чат:", placeholder="Введите название...", 
                            label_visibility="collapsed")
     if st.button("➕ Создать чат", use_container_width=True):
         if new_chat:
@@ -369,30 +419,32 @@ if not chat_id:
 messages = db.get_chat_history(chat_id)
 
 if not messages:
-    st.markdown("""
+    st.markdown(f"""
         <div class="hero-container">
             <div class="whale-logo"></div>
             <div class="hero-title">Чем могу помочь?</div>
-            <p style="color: #888; font-size: 14px; margin-top: 10px;">
-                Задайте вопрос по 44-ФЗ или загрузите документ для анализа
+            <p style="color: {current_theme['text']}80; font-size: 14px; margin-top: 10px; text-align: center;">
+                Задайте вопрос по 44-ФЗ или загрузите документ для анализа<br>
+                <small>Текущая тема: {st.session_state.theme.capitalize()}</small>
             </p>
         </div>
     """, unsafe_allow_html=True)
 else:
+    # Отображаем историю сообщений
     for i, msg in enumerate(messages):
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
             if msg["role"] == "assistant":
                 st.download_button(
-                    label="📥 Скачать",
+                    label="📥 Скачать ответ",
                     data=msg["content"],
                     file_name=f"ответ_{i+1}.txt",
                     key=f"dl_{i}",
                     use_container_width=True
                 )
 
-# 4. ВВОД СООБЩЕНИЯ
-if prompt := st.chat_input("Ваш вопрос по 44-ФЗ..."):
+# 4. ПОЛЕ ВВОДА
+if prompt := st.chat_input(f"Ваш вопрос по 44-ФЗ..."):
     with st.chat_message("user"):
         st.markdown(prompt)
     db.save_message(chat_id, "user", prompt)
@@ -403,7 +455,7 @@ if prompt := st.chat_input("Ваш вопрос по 44-ФЗ..."):
             engine = RAGEngine()
             response = engine.query(prompt, extra_context=extra_context)
         except Exception as e:
-            response = f"⚠️ Ошибка: {str(e)}. Проверьте подключение к API."
+            response = f"⚠️ Ошибка при обработке запроса: {str(e)}\n\nПроверьте подключение к интернету и API ключ."
     
     with st.chat_message("assistant"):
         st.markdown(response)
@@ -417,16 +469,24 @@ if prompt := st.chat_input("Ваш вопрос по 44-ФЗ..."):
     db.save_message(chat_id, "assistant", response)
     st.rerun()
 
-# Скрываем боковую панель при клике вне её на мобильных
+# JavaScript для работы темы и мобильного меню
 st.markdown("""
 <script>
-    // Закрытие боковой панели при клике вне её
+    // Обработка переключения тем
+    const urlParams = new URLSearchParams(window.location.search);
+    const themeParam = urlParams.get('theme');
+    if (themeParam) {
+        // Отправляем запрос на смену темы
+        fetch(`?theme=${themeParam}`, {method: 'GET'});
+    }
+    
+    // Закрытие боковой панели при клике вне её на мобильных
     document.addEventListener('click', function(event) {
         const sidebar = document.querySelector('[data-testid="stSidebar"]');
-        const toggleBtn = document.querySelector('.sidebar-toggle');
+        const menuBtn = document.querySelector('.mobile-menu-btn');
         
         if (window.innerWidth <= 430 && sidebar && sidebar.style.display === 'block') {
-            if (!sidebar.contains(event.target) && event.target !== toggleBtn) {
+            if (!sidebar.contains(event.target) && event.target !== menuBtn) {
                 sidebar.style.display = 'none';
             }
         }
@@ -439,5 +499,13 @@ st.markdown("""
             sidebar.style.display = '';
         }
     });
+    
+    // Плавная прокрутка к новым сообщениям
+    setTimeout(() => {
+        const chatMessages = document.querySelectorAll('[data-testid="stChatMessage"]');
+        if (chatMessages.length > 0) {
+            chatMessages[chatMessages.length - 1].scrollIntoView({ behavior: 'smooth' });
+        }
+    }, 100);
 </script>
 """, unsafe_allow_html=True)
