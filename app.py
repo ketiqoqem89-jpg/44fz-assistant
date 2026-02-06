@@ -1,511 +1,785 @@
-import os
-import streamlit as st
-from dotenv import load_dotenv
-import database as db
+import React, { useState, useEffect, useRef } from 'react';
 
-# Load environment variables and initialize database
-load_dotenv()
-db.init_db()
-
-# API Key for cloud/local
-if "DEEPSEEK_API_KEY" in st.secrets:
-    os.environ["DEEPSEEK_API_KEY"] = st.secrets["DEEPSEEK_API_KEY"]
-
-st.set_page_config(
-    page_title="Юрист 44-ФЗ", 
-    page_icon="⚖️", 
-    layout="wide",
-    initial_sidebar_state="collapsed"
-)
-
-# Инициализация темы
-if "theme" not in st.session_state:
-    st.session_state.theme = "dark"
-
-# Функция смены темы
-def change_theme(theme_name):
-    st.session_state.theme = theme_name
-    st.rerun()
-
-# --- СТИЛИ ДЛЯ РАЗНЫХ ТЕМ ---
-themes = {
-    "dark": {
-        "background": "#0A0A0A",
-        "text": "#FFFFFF",
-        "input_bg": "#1A1A1A",
-        "border": "#2A2A2A",
-        "primary": "#4081FF",
-        "sidebar_bg": "#111111",
-        "message_user": "#4081FF",
-        "message_assistant": "#1A1A1A"
+const App = () => {
+  // Theme definitions
+  const themes = {
+    dark: {
+      background: "#0A0A0A",
+      text: "#FFFFFF",
+      input_bg: "#1A1A1A",
+      border: "#2A2A2A",
+      primary: "#4081FF",
+      sidebar_bg: "#111111",
+      message_user: "#4081FF",
+      message_assistant: "#1A1A1A"
     },
-    "light": {
-        "background": "#FFFFFF",
-        "text": "#000000", 
-        "input_bg": "#F5F5F5",
-        "border": "#DDDDDD",
-        "primary": "#4081FF",
-        "sidebar_bg": "#F8F9FA",
-        "message_user": "#4081FF",
-        "message_assistant": "#F0F0F0"
+    light: {
+      background: "#FFFFFF",
+      text: "#000000", 
+      input_bg: "#F5F5F5",
+      border: "#DDDDDD",
+      primary: "#4081FF",
+      sidebar_bg: "#F8F9FA",
+      message_user: "#4081FF",
+      message_assistant: "#F0F0F0"
     },
-    "blue": {
-        "background": "#0F172A",
-        "text": "#E2E8F0",
-        "input_bg": "#1E293B",
-        "border": "#334155",
-        "primary": "#3B82F6",
-        "sidebar_bg": "#1E293B",
-        "message_user": "#3B82F6",
-        "message_assistant": "#1E293B"
+    blue: {
+      background: "#0F172A",
+      text: "#E2E8F0",
+      input_bg: "#1E293B",
+      border: "#334155",
+      primary: "#3B82F6",
+      sidebar_bg: "#1E293B",
+      message_user: "#3B82F6",
+      message_assistant: "#1E293B"
     },
-    "green": {
-        "background": "#0A1F0A",
-        "text": "#F0FFF0",
-        "input_bg": "#1A2A1A",
-        "border": "#2A3A2A",
-        "primary": "#10B981",
-        "sidebar_bg": "#1A2A1A",
-        "message_user": "#10B981",
-        "message_assistant": "#1A2A1A"
+    green: {
+      background: "#0A1F0A",
+      text: "#F0FFF0",
+      input_bg: "#1A2A1A",
+      border: "#2A3A2A",
+      primary: "#10B981",
+      sidebar_bg: "#1A2A1A",
+      message_user: "#10B981",
+      message_assistant: "#1A2A1A"
     }
-}
+  };
 
-current_theme = themes[st.session_state.theme]
+  // State management
+  const [theme, setTheme] = useState('dark');
+  const [user, setUser] = useState(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [chats, setChats] = useState([]);
+  const [currentChatId, setCurrentChatId] = useState(null);
+  const [inputMessage, setInputMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [pdfContext, setPdfContext] = useState(null);
+  const [newChatName, setNewChatName] = useState('');
+  const messagesEndRef = useRef(null);
 
-# --- АДАПТИВНЫЕ СТИЛИ ---
-st.markdown(f"""
-<style>
-    /* ОСНОВНЫЕ СТИЛИ */
-    .stApp {{
-        background-color: {current_theme["background"]} !important;
-        color: {current_theme["text"]} !important;
-    }}
-    
-    /* СОХРАНЯЕМ ВЕРХНЮЮ ПЛАНКУ */
-    header[data-testid="stHeader"] {{
-        background-color: {current_theme["background"]} !important;
-        border-bottom: 1px solid {current_theme["border"]} !important;
-    }}
-    
-    /* ИКОНКИ В ШАПКЕ */
-    header[data-testid="stHeader"] button {{
-        color: {current_theme["text"]} !important;
-    }}
-    
-    /* СКРЫВАЕМ НЕНУЖНЫЕ ЭЛЕМЕНТЫ */
-    .stAppDeployButton, footer, [data-testid="stDecoration"] {{
-        display: none !important;
-    }}
-    
-    /* ГЛАВНЫЙ КОНТЕЙНЕР */
-    .main .block-container {{
-        padding-top: 2rem !important;
-        padding-left: 1rem !important;
-        padding-right: 1rem !important;
-        max-width: 100% !important;
-    }}
-    
-    /* ЦЕНТРАЛЬНЫЙ ЛОГОТИП */
-    .hero-container {{
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        min-height: 50vh;
-        text-align: center;
-        padding: 20px;
-    }}
-    
-    .whale-logo {{
-        width: 60px;
-        height: 60px;
-        background: url('https://chat.deepseek.com/favicon.svg') no-repeat center;
-        background-size: contain;
-        margin-bottom: 15px;
-        filter: drop-shadow(0 0 10px {current_theme["primary"]});
-    }}
-    
-    .hero-title {{
-        font-size: 18px !important;
-        font-weight: 600 !important;
-        color: {current_theme["text"]} !important;
-        margin-bottom: 10px !important;
-    }}
-    
-    /* ПОЛЕ ВВОДА */
-    .stChatInput {{
-        position: fixed !important;
-        bottom: 20px !important;
-        left: 50% !important;
-        transform: translateX(-50%) !important;
-        width: 90% !important;
-        max-width: 600px !important;
-        background: transparent !important;
-        border: none !important;
-    }}
-    
-    .stChatInput textarea {{
-        background-color: {current_theme["input_bg"]} !important;
-        border: 1px solid {current_theme["border"]} !important;
-        border-radius: 20px !important;
-        color: {current_theme["text"]} !important;
-        font-size: 14px !important;
-        min-height: 50px !important;
-        padding: 12px 20px !important;
-    }}
-    
-    /* СООБЩЕНИЯ ЧАТА */
-    .stChatMessage {{
-        max-width: 80% !important;
-        margin: 8px 0 !important;
-    }}
-    
-    /* Сообщения пользователя */
-    [data-testid="stChatMessage"][data-message-author="user"] {{
-        margin-left: auto !important;
-        margin-right: 0 !important;
-        background-color: {current_theme["message_user"]} !important;
-        border-radius: 18px 18px 4px 18px !important;
-        padding: 12px 16px !important;
-    }}
-    
-    [data-testid="stChatMessage"][data-message-author="user"] p {{
-        color: white !important;
-        font-weight: 500 !important;
-    }}
-    
-    /* Сообщения ассистента */
-    [data-testid="stChatMessage"][data-message-author="assistant"] {{
-        margin-right: auto !important;
-        margin-left: 0 !important;
-        background-color: {current_theme["message_assistant"]} !important;
-        border-radius: 18px 18px 18px 4px !important;
-        padding: 12px 16px !important;
-        border: 1px solid {current_theme["border"]} !important;
-    }}
-    
-    [data-testid="stChatMessage"][data-message-author="assistant"] p {{
-        color: {current_theme["text"]} !important;
-        font-weight: 400 !important;
-        line-height: 1.5 !important;
-    }}
-    
-    .stMarkdown p {{
-        font-size: 14px !important;
-        line-height: 1.4 !important;
-        margin: 0 !important;
-    }}
-    
-    /* КНОПКИ СКАЧИВАНИЯ */
-    .stDownloadButton button {{
-        font-size: 12px !important;
-        padding: 6px 12px !important;
-        border-radius: 10px !important;
-        background-color: transparent !important;
-        border: 1px solid {current_theme["primary"]} !important;
-        color: {current_theme["primary"]} !important;
-        margin-top: 8px !important;
-    }}
-    
-    /* ЭКРАН АВТОРИЗАЦИИ */
-    .stTextInput input {{
-        background-color: {current_theme["input_bg"]} !important;
-        border: 1px solid {current_theme["border"]} !important;
-        color: {current_theme["text"]} !important;
-        border-radius: 12px !important;
-        font-size: 14px !important;
-    }}
-    
-    .stButton button {{
-        background-color: {current_theme["primary"]} !important;
-        color: white !important;
-        border: none !important;
-        border-radius: 12px !important;
-        font-size: 14px !important;
-        font-weight: 600 !important;
-    }}
-    
-    /* БОКОВАЯ ПАНЕЛЬ */
-    section[data-testid="stSidebar"] {{
-        background-color: {current_theme["sidebar_bg"]} !important;
-    }}
-    
-    .stSidebar .stButton button {{
-        background-color: {current_theme["input_bg"]} !important;
-        color: {current_theme["text"]} !important;
-        border: 1px solid {current_theme["border"]} !important;
-    }}
-    
-    /* КНОПКА МЕНЮ ДЛЯ МОБИЛЬНЫХ */
-    .mobile-menu-btn {{
-        position: fixed !important;
-        top: 10px !important;
-        left: 10px !important;
-        z-index: 1000 !important;
-        background-color: {current_theme["input_bg"]} !important;
-        border: 1px solid {current_theme["border"]} !important;
-        border-radius: 8px !important;
-        color: {current_theme["text"]} !important;
-        padding: 8px 12px !important;
-        font-size: 14px !important;
-    }}
-    
-    /* АДАПТИВНОСТЬ ДЛЯ МОБИЛЬНЫХ */
-    @media (max-width: 430px) {{
-        .stChatInput {{
-            width: 95% !important;
-            bottom: 10px !important;
-        }}
-        
-        .stChatInput textarea {{
-            font-size: 16px !important;
-        }}
-        
-        .stChatMessage {{
-            max-width: 85% !important;
-        }}
-        
-        .stMarkdown p {{
-            font-size: 15px !important;
-        }}
-        
-        .hero-container {{
-            min-height: 40vh;
-        }}
-    }}
-    
-    /* ПЕРЕКЛЮЧАТЕЛИ ТЕМ */
-    .theme-btn {{
-        display: inline-block;
-        width: 30px;
-        height: 30px;
-        border-radius: 50%;
-        margin: 2px;
-        cursor: pointer;
-        border: 2px solid transparent;
-    }}
-    
-    .theme-btn.active {{
-        border: 2px solid white;
-    }}
-    
-    .theme-btn.dark {{ background-color: #0A0A0A; }}
-    .theme-btn.light {{ background-color: #FFFFFF; }}
-    .theme-btn.blue {{ background-color: #0F172A; }}
-    .theme-btn.green {{ background-color: #0A1F0A; }}
-</style>
-""", unsafe_allow_html=True)
+  // Set initial chat
+  useEffect(() => {
+    if (chats.length === 0) {
+      const initialChat = {
+        id: Date.now(),
+        name: 'Основной чат',
+        messages: []
+      };
+      setChats([initialChat]);
+      setCurrentChatId(initialChat.id);
+    }
+  }, [chats]);
 
-# 1. АВТОРИЗАЦИЯ
-if "user_id" not in st.session_state:
-    st.markdown('<div class="hero-container">', unsafe_allow_html=True)
-    st.markdown("<div class='whale-logo'></div>", unsafe_allow_html=True)
-    st.markdown("<div class='hero-title'>Вход в систему</div><br>", unsafe_allow_html=True)
-    tg_id = st.text_input("ID:", placeholder="@username или номер телефона", label_visibility="collapsed")
-    if st.button("ВОЙТИ", use_container_width=True):
-        if tg_id:
-            st.session_state.user_id = tg_id
-            st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
-    st.stop()
-
-user_id = st.session_state.user_id
-
-# Кнопка мобильного меню
-st.markdown("""
-<button class="mobile-menu-btn" onclick="document.querySelector('[data-testid=\"stSidebar\"]').style.display = 'block'">☰ Меню</button>
-""", unsafe_allow_html=True)
-
-# 2. БОКОВАЯ ПАНЕЛЬ
-with st.sidebar:
-    # Кнопка закрытия для мобильных
-    st.markdown("""
-    <div style="text-align: right; margin-bottom: 10px;">
-        <button onclick="document.querySelector('[data-testid=\"stSidebar\"]').style.display = 'none'" 
-                style="background: none; border: none; color: inherit; font-size: 20px; cursor: pointer;">✕</button>
-    </div>
-    """, unsafe_allow_html=True)
+  // Handle theme changes
+  useEffect(() => {
+    const root = document.documentElement;
+    const currentTheme = themes[theme];
     
-    # Профиль пользователя
-    st.markdown(f"### 👤 {user_id}")
-    st.markdown("---")
+    // Set CSS variables for theming
+    Object.entries(currentTheme).forEach(([key, value]) => {
+      root.style.setProperty(`--${key.replace('_', '-')}`, value);
+    });
     
-    # Переключатель тем
-    st.subheader("🎨 Тема")
-    cols = st.columns(4)
-    themes_list = list(themes.keys())
-    for idx, theme_name in enumerate(themes_list):
-        with cols[idx]:
-            is_active = "active" if st.session_state.theme == theme_name else ""
-            st.markdown(f"""
-            <div class="theme-btn {theme_name} {is_active}" 
-                 onclick="window.location.href='?theme={theme_name}'"
-                 title="{theme_name.capitalize()} тема"></div>
-            """, unsafe_allow_html=True)
-            st.caption(theme_name.capitalize())
-    
-    st.markdown("---")
-    
-    # Кнопки управления профилем
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("📱 Профиль", use_container_width=True):
-            st.info("Раздел в разработке")
-    with col2:
-        if st.button("🚪 Выйти", use_container_width=True):
-            for key in list(st.session_state.keys()):
-                del st.session_state[key]
-            st.rerun()
-    
-    st.markdown("---")
-    
-    # Загрузка файлов
-    st.subheader("📁 Анализ документа")
-    pdf_file = st.file_uploader("Загрузить PDF", type="pdf", label_visibility="collapsed")
-    extra_context = None
-    if pdf_file:
-        try:
-            import pypdf
-            reader = pypdf.PdfReader(pdf_file)
-            extra_context = "".join([p.extract_text() + "\n" for p in reader.pages])
-            st.success("✅ Документ загружен")
-        except Exception as e:
-            st.error(f"❌ Ошибка: {str(e)}")
-    
-    st.markdown("---")
-    
-    # Управление чатами
-    st.subheader("📚 Мои чаты")
-    
-    user_chats = db.get_user_chats(user_id)
-    if user_chats:
-        c_names = [c[1] for c in user_chats]
-        c_ids = [c[0] for c in user_chats]
-        
-        if "chat_id" not in st.session_state or st.session_state.chat_id not in c_ids:
-            st.session_state.chat_id = c_ids[0]
-        
-        pick = st.selectbox("Выбрать чат:", options=c_names, 
-                          index=c_ids.index(st.session_state.chat_id),
-                          label_visibility="collapsed")
-        st.session_state.chat_id = c_ids[c_names.index(pick)]
-        
-        col_del, col_rename = st.columns(2)
-        with col_del:
-            if st.button("🗑️ Удалить", use_container_width=True):
-                db.delete_chat(st.session_state.chat_id)
-                del st.session_state.chat_id
-                st.rerun()
-        with col_rename:
-            if st.button("✏️ Переименовать", use_container_width=True):
-                st.info("Функция в разработке")
-    
-    new_chat = st.text_input("Новый чат:", placeholder="Введите название...", 
-                           label_visibility="collapsed")
-    if st.button("➕ Создать чат", use_container_width=True):
-        if new_chat:
-            nid = db.create_chat(user_id, new_chat)
-            if nid:
-                st.session_state.chat_id = nid
-                st.rerun()
-
-# 3. ОСНОВНОЙ ЭКРАН
-chat_id = st.session_state.get("chat_id")
-if not chat_id:
-    chat_id = db.create_chat(user_id, "Основной чат")
-    st.session_state.chat_id = chat_id
-
-messages = db.get_chat_history(chat_id)
-
-if not messages:
-    st.markdown(f"""
-        <div class="hero-container">
-            <div class="whale-logo"></div>
-            <div class="hero-title">Чем могу помочь?</div>
-            <p style="color: {current_theme['text']}80; font-size: 14px; margin-top: 10px; text-align: center;">
-                Задайте вопрос по 44-ФЗ или загрузите документ для анализа<br>
-                <small>Текущая тема: {st.session_state.theme.capitalize()}</small>
-            </p>
-        </div>
-    """, unsafe_allow_html=True)
-else:
-    # Отображаем историю сообщений
-    for i, msg in enumerate(messages):
-        with st.chat_message(msg["role"]):
-            st.markdown(msg["content"])
-            if msg["role"] == "assistant":
-                st.download_button(
-                    label="📥 Скачать ответ",
-                    data=msg["content"],
-                    file_name=f"ответ_{i+1}.txt",
-                    key=f"dl_{i}",
-                    use_container_width=True
-                )
-
-# 4. ПОЛЕ ВВОДА
-if prompt := st.chat_input(f"Ваш вопрос по 44-ФЗ..."):
-    with st.chat_message("user"):
-        st.markdown(prompt)
-    db.save_message(chat_id, "user", prompt)
-    
-    with st.spinner("🤔 Анализирую..."):
-        try:
-            from rag_engine import RAGEngine
-            engine = RAGEngine()
-            response = engine.query(prompt, extra_context=extra_context)
-        except Exception as e:
-            response = f"⚠️ Ошибка при обработке запроса: {str(e)}\n\nПроверьте подключение к интернету и API ключ."
-    
-    with st.chat_message("assistant"):
-        st.markdown(response)
-        st.download_button(
-            label="📥 Скачать ответ",
-            data=response,
-            file_name="ответ_юриста.txt",
-            use_container_width=True
-        )
-    
-    db.save_message(chat_id, "assistant", response)
-    st.rerun()
-
-# JavaScript для работы темы и мобильного меню
-st.markdown("""
-<script>
-    // Обработка переключения тем
+    // Handle URL theme parameter
     const urlParams = new URLSearchParams(window.location.search);
     const themeParam = urlParams.get('theme');
-    if (themeParam) {
-        // Отправляем запрос на смену темы
-        fetch(`?theme=${themeParam}`, {method: 'GET'});
+    if (themeParam && themes[themeParam]) {
+      setTheme(themeParam);
+    }
+  }, [theme]);
+
+  // Auto-scroll to latest message
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chats, currentChatId]);
+
+  // Handle mobile sidebar toggle
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth > 768) {
+        setIsSidebarOpen(true);
+      } else {
+        setIsSidebarOpen(false);
+      }
+    };
+    
+    window.addEventListener('resize', handleResize);
+    handleResize();
+    
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Handle login
+  const handleLogin = (userId) => {
+    if (userId.trim()) {
+      setUser(userId.trim());
+      // Initialize with one chat if none exists
+      if (chats.length === 0) {
+        const initialChat = {
+          id: Date.now(),
+          name: 'Основной чат',
+          messages: []
+        };
+        setChats([initialChat]);
+        setCurrentChatId(initialChat.id);
+      }
+    }
+  };
+
+  // Handle logout
+  const handleLogout = () => {
+    setUser(null);
+    setChats([]);
+    setCurrentChatId(null);
+    setPdfContext(null);
+  };
+
+  // Create new chat
+  const createChat = () => {
+    if (newChatName.trim()) {
+      const newChat = {
+        id: Date.now(),
+        name: newChatName.trim(),
+        messages: []
+      };
+      setChats([...chats, newChat]);
+      setCurrentChatId(newChat.id);
+      setNewChatName('');
+    }
+  };
+
+  // Delete chat
+  const deleteChat = (chatId) => {
+    const updatedChats = chats.filter(chat => chat.id !== chatId);
+    setChats(updatedChats);
+    
+    if (currentChatId === chatId) {
+      setCurrentChatId(updatedChats.length > 0 ? updatedChats[0].id : null);
+    }
+  };
+
+  // Handle file upload
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (file && file.type === 'application/pdf') {
+      // In a real app, this would process the PDF
+      // For demo purposes, we'll just set a context message
+      setPdfContext(`Документ "${file.name}" успешно загружен и готов к анализу.`);
+      
+      // Reset file input
+      e.target.value = null;
+    }
+  };
+
+  // Handle message send
+  const handleSendMessage = () => {
+    if (!inputMessage.trim() || !currentChatId) return;
+    
+    const userMessage = {
+      role: 'user',
+      content: inputMessage.trim()
+    };
+    
+    // Update chat with user message
+    setChats(prevChats => 
+      prevChats.map(chat => 
+        chat.id === currentChatId 
+          ? { ...chat, messages: [...chat.messages, userMessage] }
+          : chat
+      )
+    );
+    
+    // Clear input
+    setInputMessage('');
+    setIsLoading(true);
+    
+    // Simulate AI response
+    setTimeout(() => {
+      let response = '';
+      
+      if (pdfContext && inputMessage.toLowerCase().includes('документ')) {
+        response = `На основе загруженного документа: ${pdfContext}\n\n${generateResponse(inputMessage)}`;
+      } else {
+        response = generateResponse(inputMessage);
+      }
+      
+      const assistantMessage = {
+        role: 'assistant',
+        content: response
+      };
+      
+      // Update chat with assistant message
+      setChats(prevChats => 
+        prevChats.map(chat => 
+          chat.id === currentChatId 
+            ? { ...chat, messages: [...chat.messages, assistantMessage] }
+            : chat
+        )
+      );
+      
+      setIsLoading(false);
+    }, 1000);
+  };
+
+  // Generate mock response
+  const generateResponse = (query) => {
+    if (query.toLowerCase().includes('44-фз')) {
+      return `Статья 44-ФЗ регулирует вопросы контрактной системы в сфере закупок товаров, работ, услуг для обеспечения государственных и муниципальных нужд. Основные положения включают:\n\n• Порядок планирования закупок\n• Требования к участникам закупок\n• Процедуры проведения торгов\n• Контроль в сфере закупок\n\nДля получения конкретной информации уточните ваш вопрос.`;
     }
     
-    // Закрытие боковой панели при клике вне её на мобильных
-    document.addEventListener('click', function(event) {
-        const sidebar = document.querySelector('[data-testid="stSidebar"]');
-        const menuBtn = document.querySelector('.mobile-menu-btn');
+    if (query.toLowerCase().includes('тендер')) {
+      return `Тендер (конкурс) согласно 44-ФЗ - это способ определения поставщика, при котором победителем признается участник, предложивший лучшие условия исполнения контракта. Основные этапы:\n\n1. Размещение извещения о проведении конкурса\n2. Подача заявок участниками\n3. Рассмотрение и оценка заявок\n4. Подведение итогов и заключение контракта\n\nСроки проведения конкурса составляют не менее 20 дней с даты размещения извещения.`;
+    }
+    
+    return `Ваш вопрос: "${query}"\n\nСогласно Федеральному закону №44-ФЗ "О контрактной системе в сфере закупок товаров, работ, услуг для обеспечения государственных и муниципальных нужд", я могу предоставить следующую информацию:\n\n• Для уточнения нормативных требований обратитесь к конкретной статье закона\n• При анализе тендерной документации проверяйте соответствие требованиям 44-ФЗ\n• Сроки подачи заявок зависят от типа закупки и начальной цены контракта\n\nРекомендую уточнить ваш вопрос для получения более детальной информации.`;
+  };
+
+  // Download message content
+  const downloadMessage = (content, filename) => {
+    const element = document.createElement('a');
+    element.setAttribute('href', 'text/plain;charset=utf-8,' + encodeURIComponent(content));
+    element.setAttribute('download', filename);
+    element.style.display = 'none';
+    document.body.appendChild(element);
+    element.click();
+    document.body.removeChild(element);
+  };
+
+  // Get current chat messages
+  const currentMessages = currentChatId 
+    ? chats.find(chat => chat.id === currentChatId)?.messages || []
+    : [];
+
+  // Authentication screen
+  if (!user) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center" style={{ backgroundColor: themes[theme].background, color: themes[theme].text }}>
+        <style>{`
+          :root {
+            ${Object.entries(themes[theme]).map(([key, value]) => `--${key.replace('_', '-')}: ${value};`).join('\n')}
+          }
+        `}</style>
         
-        if (window.innerWidth <= 430 && sidebar && sidebar.style.display === 'block') {
-            if (!sidebar.contains(event.target) && event.target !== menuBtn) {
-                sidebar.style.display = 'none';
-            }
+        <div className="hero-container text-center px-4">
+          <div 
+            className="whale-logo mx-auto mb-4"
+            style={{
+              width: '60px',
+              height: '60px',
+              backgroundImage: "url('https://chat.deepseek.com/favicon.svg')",
+              backgroundRepeat: 'no-repeat',
+              backgroundPosition: 'center',
+              backgroundSize: 'contain',
+              filter: `drop-shadow(0 0 10px ${themes[theme].primary})`
+            }}
+          ></div>
+          <h1 className="hero-title text-xl font-semibold mb-2">Вход в систему</h1>
+          <p className="text-sm opacity-80 mb-6">Пожалуйста, авторизуйтесь для продолжения</p>
+          
+          <div className="w-full max-w-xs">
+            <input
+              type="text"
+              placeholder="@username или номер телефона"
+              className="w-full px-4 py-3 rounded-xl mb-4"
+              style={{ 
+                backgroundColor: themes[theme].input_bg,
+                border: `1px solid ${themes[theme].border}`,
+                color: themes[theme].text
+              }}
+              onKeyPress={(e) => e.key === 'Enter' && handleLogin(e.target.value)}
+            />
+            <button
+              className="w-full py-3 rounded-xl font-medium text-white"
+              style={{ backgroundColor: themes[theme].primary }}
+              onClick={() => handleLogin(document.querySelector('input[type="text"]').value)}
+            >
+              ВОЙТИ
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Main application
+  return (
+    <div className="min-h-screen flex" style={{ backgroundColor: themes[theme].background, color: themes[theme].text }}>
+      <style>{`
+        :root {
+          ${Object.entries(themes[theme]).map(([key, value]) => `--${key.replace('_', '-')}: ${value};`).join('\n')}
         }
-    });
-    
-    // Адаптация при изменении размера экрана
-    window.addEventListener('resize', function() {
-        const sidebar = document.querySelector('[data-testid="stSidebar"]');
-        if (window.innerWidth > 430 && sidebar) {
-            sidebar.style.display = '';
+        
+        .sidebar {
+          background-color: var(--sidebar-bg);
+          border-right: 1px solid var(--border);
+          transition: transform 0.3s ease;
         }
-    });
-    
-    // Плавная прокрутка к новым сообщениям
-    setTimeout(() => {
-        const chatMessages = document.querySelectorAll('[data-testid="stChatMessage"]');
-        if (chatMessages.length > 0) {
-            chatMessages[chatMessages.length - 1].scrollIntoView({ behavior: 'smooth' });
+        
+        .sidebar.mobile {
+          position: fixed;
+          left: 0;
+          top: 0;
+          height: 100vh;
+          width: 280px;
+          z-index: 1000;
+          transform: translateX(-100%);
         }
-    }, 100);
-</script>
-""", unsafe_allow_html=True)
+        
+        .sidebar.mobile.open {
+          transform: translateX(0);
+        }
+        
+        .chat-container {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          max-width: 100%;
+          padding: 1.5rem;
+          padding-bottom: 100px;
+        }
+        
+        .message {
+          max-width: 80%;
+          margin: 8px 0;
+          padding: 12px 16px;
+          border-radius: 18px;
+          line-height: 1.5;
+          font-size: 14px;
+        }
+        
+        .message.user {
+          margin-left: auto;
+          background-color: var(--message-user);
+          border-radius: 18px 18px 4px 18px;
+          color: white;
+          font-weight: 500;
+        }
+        
+        .message.assistant {
+          margin-right: auto;
+          background-color: var(--message-assistant);
+          border: 1px solid var(--border);
+          border-radius: 18px 18px 18px 4px;
+          color: var(--text);
+        }
+        
+        .chat-input-container {
+          position: fixed;
+          bottom: 20px;
+          left: 50%;
+          transform: translateX(-50%);
+          width: 90%;
+          max-width: 600px;
+          z-index: 100;
+        }
+        
+        .chat-input {
+          width: 100%;
+          min-height: 50px;
+          padding: 12px 20px;
+          border-radius: 20px;
+          font-size: 14px;
+          resize: none;
+          background-color: var(--input-bg);
+          border: 1px solid var(--border);
+          color: var(--text);
+        }
+        
+        .chat-input:focus {
+          outline: none;
+          border-color: var(--primary);
+        }
+        
+        .theme-btn {
+          display: inline-block;
+          width: 30px;
+          height: 30px;
+          border-radius: 50%;
+          margin: 2px;
+          cursor: pointer;
+          border: 2px solid transparent;
+        }
+        
+        .theme-btn.active {
+          border: 2px solid white;
+        }
+        
+        .theme-btn.dark { background-color: #0A0A0A; }
+        .theme-btn.light { background-color: #FFFFFF; border-color: #DDD; }
+        .theme-btn.blue { background-color: #0F172A; }
+        .theme-btn.green { background-color: #0A1F0A; }
+        
+        .mobile-menu-btn {
+          position: fixed;
+          top: 10px;
+          left: 10px;
+          z-index: 1001;
+          background-color: var(--input-bg);
+          border: 1px solid var(--border);
+          border-radius: 8px;
+          color: var(--text);
+          padding: 8px 12px;
+          font-size: 14px;
+          display: none;
+        }
+        
+        @media (max-width: 768px) {
+          .sidebar.desktop {
+            display: none;
+          }
+          
+          .sidebar.mobile {
+            display: block;
+          }
+          
+          .mobile-menu-btn {
+            display: block;
+          }
+          
+          .chat-container {
+            padding: 1rem;
+            padding-bottom: 90px;
+          }
+          
+          .chat-input-container {
+            width: 95%;
+            bottom: 10px;
+          }
+          
+          .message {
+            max-width: 85%;
+            font-size: 15px;
+          }
+        }
+      `}</style>
+      
+      {/* Mobile menu button */}
+      <button 
+        className="mobile-menu-btn"
+        onClick={() => setIsSidebarOpen(true)}
+      >
+        ☰ Меню
+      </button>
+      
+      {/* Sidebar - Desktop version */}
+      <div className="sidebar desktop hidden md:block w-64">
+        <SidebarContent 
+          user={user}
+          theme={theme}
+          themes={themes}
+          chats={chats}
+          currentChatId={currentChatId}
+          pdfContext={pdfContext}
+          newChatName={newChatName}
+          onThemeChange={setTheme}
+          onChatSelect={setCurrentChatId}
+          onChatDelete={deleteChat}
+          onNewChatNameChange={setNewChatName}
+          onCreateChat={createChat}
+          onFileUpload={handleFileUpload}
+          onLogout={handleLogout}
+        />
+      </div>
+      
+      {/* Sidebar - Mobile version */}
+      <div className={`sidebar mobile ${isSidebarOpen ? 'open' : ''}`}>
+        <div className="p-4 text-right">
+          <button 
+            onClick={() => setIsSidebarOpen(false)}
+            className="text-2xl"
+            style={{ color: themes[theme].text }}
+          >
+            ✕
+          </button>
+        </div>
+        <SidebarContent 
+          user={user}
+          theme={theme}
+          themes={themes}
+          chats={chats}
+          currentChatId={currentChatId}
+          pdfContext={pdfContext}
+          newChatName={newChatName}
+          onThemeChange={(newTheme) => {
+            setTheme(newTheme);
+            setIsSidebarOpen(false);
+          }}
+          onChatSelect={(chatId) => {
+            setCurrentChatId(chatId);
+            setIsSidebarOpen(false);
+          }}
+          onChatDelete={deleteChat}
+          onNewChatNameChange={setNewChatName}
+          onCreateChat={createChat}
+          onFileUpload={handleFileUpload}
+          onLogout={handleLogout}
+        />
+      </div>
+      
+      {/* Main chat area */}
+      <div className="chat-container">
+        {currentMessages.length === 0 ? (
+          <div className="hero-container text-center flex flex-col items-center justify-center h-full">
+            <div 
+              className="whale-logo mb-4"
+              style={{
+                width: '60px',
+                height: '60px',
+                backgroundImage: "url('https://chat.deepseek.com/favicon.svg')",
+                backgroundRepeat: 'no-repeat',
+                backgroundPosition: 'center',
+                backgroundSize: 'contain',
+                filter: `drop-shadow(0 0 10px ${themes[theme].primary})`
+              }}
+            ></div>
+            <h1 className="hero-title text-xl font-semibold mb-2">Чем могу помочь?</h1>
+            <p className="opacity-80 text-sm">
+              Задайте вопрос по 44-ФЗ или загрузите документ для анализа
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {currentMessages.map((message, index) => (
+              <div 
+                key={index} 
+                className={`message ${message.role}`}
+              >
+                {message.content}
+                {message.role === 'assistant' && (
+                  <button
+                    className="mt-2 px-3 py-1 rounded-lg text-xs flex items-center justify-center w-full"
+                    style={{ 
+                      border: `1px solid ${themes[theme].primary}`,
+                      color: themes[theme].primary,
+                      backgroundColor: 'transparent'
+                    }}
+                    onClick={() => downloadMessage(message.content, `ответ_${index + 1}.txt`)}
+                  >
+                    📥 Скачать ответ
+                  </button>
+                )}
+              </div>
+            ))}
+            <div ref={messagesEndRef} />
+          </div>
+        )}
+        
+        {/* Loading indicator */}
+        {isLoading && (
+          <div className="message assistant">
+            🤔 Анализирую...
+          </div>
+        )}
+      </div>
+      
+      {/* Chat input */}
+      <div className="chat-input-container">
+        <textarea
+          className="chat-input"
+          placeholder="Ваш вопрос по 44-ФЗ..."
+          value={inputMessage}
+          onChange={(e) => setInputMessage(e.target.value)}
+          onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleSendMessage())}
+        />
+      </div>
+    </div>
+  );
+};
+
+// Sidebar component
+const SidebarContent = ({
+  user,
+  theme,
+  themes,
+  chats,
+  currentChatId,
+  pdfContext,
+  newChatName,
+  onThemeChange,
+  onChatSelect,
+  onChatDelete,
+  onNewChatNameChange,
+  onCreateChat,
+  onFileUpload,
+  onLogout
+}) => {
+  return (
+    <div className="h-full flex flex-col p-4">
+      {/* User profile */}
+      <div className="mb-4 pb-4 border-b" style={{ borderColor: themes[theme].border }}>
+        <div className="font-bold text-lg flex items-center">
+          <span className="mr-2">👤</span>
+          {user}
+        </div>
+      </div>
+      
+      {/* Theme selector */}
+      <div className="mb-6">
+        <h3 className="font-semibold mb-3 flex items-center">
+          <span className="mr-2">🎨</span>
+          Тема
+        </h3>
+        <div className="grid grid-cols-4 gap-2">
+          {Object.keys(themes).map((themeName) => (
+            <div key={themeName} className="text-center">
+              <div
+                className={`theme-btn ${themeName} ${theme === themeName ? 'active' : ''}`}
+                onClick={() => onThemeChange(themeName)}
+                title={`${themeName.charAt(0).toUpperCase() + themeName.slice(1)} тема`}
+              />
+              <div className="text-xs mt-1">
+                {themeName.charAt(0).toUpperCase() + themeName.slice(1)}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+      
+      {/* Profile actions */}
+      <div className="mb-6 grid grid-cols-2 gap-3">
+        <button
+          className="py-2 rounded-lg font-medium flex items-center justify-center"
+          style={{ 
+            backgroundColor: themes[theme].input_bg,
+            border: `1px solid ${themes[theme].border}`,
+            color: themes[theme].text
+          }}
+        >
+          <span className="mr-1">📱</span>
+          Профиль
+        </button>
+        <button
+          className="py-2 rounded-lg font-medium flex items-center justify-center"
+          style={{ 
+            backgroundColor: themes[theme].input_bg,
+            border: `1px solid ${themes[theme].border}`,
+            color: themes[theme].text
+          }}
+          onClick={onLogout}
+        >
+          <span className="mr-1">🚪</span>
+          Выйти
+        </button>
+      </div>
+      
+      {/* Document upload */}
+      <div className="mb-6 pb-4 border-b" style={{ borderColor: themes[theme].border }}>
+        <h3 className="font-semibold mb-3 flex items-center">
+          <span className="mr-2">📁</span>
+          Анализ документа
+        </h3>
+        <label className="block">
+          <input
+            type="file"
+            accept=".pdf"
+            onChange={onFileUpload}
+            className="hidden"
+          />
+          <div
+            className="border-2 border-dashed rounded-lg p-4 text-center cursor-pointer hover:opacity-80 transition-opacity"
+            style={{ 
+              borderColor: themes[theme].border,
+              backgroundColor: themes[theme].input_bg
+            }}
+          >
+            {pdfContext ? (
+              <div className="text-green-500">✅ Документ загружен</div>
+            ) : (
+              <div>
+                <div className="text-2xl mb-2">📄</div>
+                <div>Загрузить PDF</div>
+              </div>
+            )}
+          </div>
+        </label>
+        {pdfContext && (
+          <div className="mt-2 text-xs opacity-80">
+            {pdfContext}
+          </div>
+        )}
+      </div>
+      
+      {/* Chat management */}
+      <div className="mb-4">
+        <h3 className="font-semibold mb-3 flex items-center">
+          <span className="mr-2">📚</span>
+          Мои чаты
+        </h3>
+        
+        {/* Chat list */}
+        <div className="space-y-2 mb-4 max-h-60 overflow-y-auto pr-2">
+          {chats.map((chat) => (
+            <div
+              key={chat.id}
+              className={`p-3 rounded-lg cursor-pointer transition-colors ${
+                currentChatId === chat.id ? 'opacity-100' : 'opacity-70 hover:opacity-90'
+              }`}
+              style={{ 
+                backgroundColor: currentChatId === chat.id ? themes[theme].primary : themes[theme].input_bg,
+                color: currentChatId === chat.id ? 'white' : themes[theme].text
+              }}
+              onClick={() => onChatSelect(chat.id)}
+            >
+              {chat.name}
+            </div>
+          ))}
+        </div>
+        
+        {/* Chat actions */}
+        <div className="grid grid-cols-2 gap-2 mb-4">
+          <button
+            className="py-2 rounded-lg font-medium flex items-center justify-center"
+            style={{ 
+              backgroundColor: themes[theme].input_bg,
+              border: `1px solid ${themes[theme].border}`,
+              color: themes[theme].text
+            }}
+            onClick={() => currentChatId && onChatDelete(currentChatId)}
+          >
+            <span className="mr-1">🗑️</span>
+            Удалить
+          </button>
+          <button
+            className="py-2 rounded-lg font-medium flex items-center justify-center"
+            style={{ 
+              backgroundColor: themes[theme].input_bg,
+              border: `1px solid ${themes[theme].border}`,
+              color: themes[theme].text
+            }}
+          >
+            <span className="mr-1">✏️</span>
+            Переименовать
+          </button>
+        </div>
+        
+        {/* Create new chat */}
+        <div className="flex gap-2">
+          <input
+            type="text"
+            placeholder="Новый чат..."
+            className="flex-1 px-3 py-2 rounded-lg"
+            style={{ 
+              backgroundColor: themes[theme].input_bg,
+              border: `1px solid ${themes[theme].border}`,
+              color: themes[theme].text
+            }}
+            value={newChatName}
+            onChange={(e) => onNewChatNameChange(e.target.value)}
+          />
+          <button
+            className="px-4 rounded-lg font-medium flex items-center justify-center"
+            style={{ 
+              backgroundColor: themes[theme].primary,
+              color: 'white'
+            }}
+            onClick={onCreateChat}
+          >
+            ➕
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default App;
