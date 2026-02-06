@@ -424,8 +424,7 @@ if not messages:
             <div class="whale-logo"></div>
             <div class="hero-title">Чем могу помочь?</div>
             <p style="color: {current_theme['text']}80; font-size: 14px; margin-top: 10px; text-align: center;">
-                Задайте вопрос по 44-ФЗ или загрузите документ для анализа<br>
-                <small>Текущая тема: {st.session_state.theme.capitalize()}</small>
+                Задайте вопрос по 44-ФЗ или загрузите документ для анализа
             </p>
         </div>
     """, unsafe_allow_html=True)
@@ -476,8 +475,7 @@ st.markdown("""
     const urlParams = new URLSearchParams(window.location.search);
     const themeParam = urlParams.get('theme');
     if (themeParam) {
-        // Отправляем запрос на смену темы
-        fetch(`?theme=${themeParam}`, {method: 'GET'});
+        fetch(window.location.pathname + '?theme=' + themeParam, {method: 'GET'});
     }
     
     // Закрытие боковой панели при клике вне её на мобильных
