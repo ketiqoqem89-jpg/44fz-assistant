@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 
 const App = () => {
-  // Theme definitions
   const themes = {
     dark: {
       background: "#0A0A0A",
@@ -45,7 +44,6 @@ const App = () => {
     }
   };
 
-  // State management
   const [theme, setTheme] = useState('dark');
   const [user, setUser] = useState(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -57,7 +55,6 @@ const App = () => {
   const [newChatName, setNewChatName] = useState('');
   const messagesEndRef = useRef(null);
 
-  // Set initial chat
   useEffect(() => {
     if (chats.length === 0) {
       const initialChat = {
@@ -70,17 +67,13 @@ const App = () => {
     }
   }, [chats]);
 
-  // Handle theme changes
   useEffect(() => {
     const root = document.documentElement;
     const currentTheme = themes[theme];
-    
-    // Set CSS variables for theming
     Object.entries(currentTheme).forEach(([key, value]) => {
       root.style.setProperty(`--${key.replace('_', '-')}`, value);
     });
     
-    // Handle URL theme parameter
     const urlParams = new URLSearchParams(window.location.search);
     const themeParam = urlParams.get('theme');
     if (themeParam && themes[themeParam]) {
@@ -88,12 +81,10 @@ const App = () => {
     }
   }, [theme]);
 
-  // Auto-scroll to latest message
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chats, currentChatId]);
 
-  // Handle mobile sidebar toggle
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth > 768) {
@@ -105,15 +96,12 @@ const App = () => {
     
     window.addEventListener('resize', handleResize);
     handleResize();
-    
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Handle login
   const handleLogin = (userId) => {
     if (userId.trim()) {
       setUser(userId.trim());
-      // Initialize with one chat if none exists
       if (chats.length === 0) {
         const initialChat = {
           id: Date.now(),
@@ -126,7 +114,6 @@ const App = () => {
     }
   };
 
-  // Handle logout
   const handleLogout = () => {
     setUser(null);
     setChats([]);
@@ -134,7 +121,6 @@ const App = () => {
     setPdfContext(null);
   };
 
-  // Create new chat
   const createChat = () => {
     if (newChatName.trim()) {
       const newChat = {
@@ -148,7 +134,6 @@ const App = () => {
     }
   };
 
-  // Delete chat
   const deleteChat = (chatId) => {
     const updatedChats = chats.filter(chat => chat.id !== chatId);
     setChats(updatedChats);
@@ -158,20 +143,14 @@ const App = () => {
     }
   };
 
-  // Handle file upload
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (file && file.type === 'application/pdf') {
-      // In a real app, this would process the PDF
-      // For demo purposes, we'll just set a context message
       setPdfContext(`Документ "${file.name}" успешно загружен и готов к анализу.`);
-      
-      // Reset file input
       e.target.value = null;
     }
   };
 
-  // Handle message send
   const handleSendMessage = () => {
     if (!inputMessage.trim() || !currentChatId) return;
     
@@ -180,7 +159,6 @@ const App = () => {
       content: inputMessage.trim()
     };
     
-    // Update chat with user message
     setChats(prevChats => 
       prevChats.map(chat => 
         chat.id === currentChatId 
@@ -189,11 +167,9 @@ const App = () => {
       )
     );
     
-    // Clear input
     setInputMessage('');
     setIsLoading(true);
     
-    // Simulate AI response
     setTimeout(() => {
       let response = '';
       
@@ -208,7 +184,6 @@ const App = () => {
         content: response
       };
       
-      // Update chat with assistant message
       setChats(prevChats => 
         prevChats.map(chat => 
           chat.id === currentChatId 
@@ -221,7 +196,6 @@ const App = () => {
     }, 1000);
   };
 
-  // Generate mock response
   const generateResponse = (query) => {
     if (query.toLowerCase().includes('44-фз')) {
       return `Статья 44-ФЗ регулирует вопросы контрактной системы в сфере закупок товаров, работ, услуг для обеспечения государственных и муниципальных нужд. Основные положения включают:\n\n• Порядок планирования закупок\n• Требования к участникам закупок\n• Процедуры проведения торгов\n• Контроль в сфере закупок\n\nДля получения конкретной информации уточните ваш вопрос.`;
@@ -234,10 +208,9 @@ const App = () => {
     return `Ваш вопрос: "${query}"\n\nСогласно Федеральному закону №44-ФЗ "О контрактной системе в сфере закупок товаров, работ, услуг для обеспечения государственных и муниципальных нужд", я могу предоставить следующую информацию:\n\n• Для уточнения нормативных требований обратитесь к конкретной статье закона\n• При анализе тендерной документации проверяйте соответствие требованиям 44-ФЗ\n• Сроки подачи заявок зависят от типа закупки и начальной цены контракта\n\nРекомендую уточнить ваш вопрос для получения более детальной информации.`;
   };
 
-  // Download message content
   const downloadMessage = (content, filename) => {
     const element = document.createElement('a');
-    element.setAttribute('href', 'text/plain;charset=utf-8,' + encodeURIComponent(content));
+    element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(content));
     element.setAttribute('download', filename);
     element.style.display = 'none';
     document.body.appendChild(element);
@@ -245,12 +218,10 @@ const App = () => {
     document.body.removeChild(element);
   };
 
-  // Get current chat messages
   const currentMessages = currentChatId 
     ? chats.find(chat => chat.id === currentChatId)?.messages || []
     : [];
 
-  // Authentication screen
   if (!user) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center" style={{ backgroundColor: themes[theme].background, color: themes[theme].text }}>
@@ -301,7 +272,6 @@ const App = () => {
     );
   }
 
-  // Main application
   return (
     <div className="min-h-screen flex" style={{ backgroundColor: themes[theme].background, color: themes[theme].text }}>
       <style>{`
@@ -453,7 +423,6 @@ const App = () => {
         }
       `}</style>
       
-      {/* Mobile menu button */}
       <button 
         className="mobile-menu-btn"
         onClick={() => setIsSidebarOpen(true)}
@@ -461,7 +430,6 @@ const App = () => {
         ☰ Меню
       </button>
       
-      {/* Sidebar - Desktop version */}
       <div className="sidebar desktop hidden md:block w-64">
         <SidebarContent 
           user={user}
@@ -481,7 +449,6 @@ const App = () => {
         />
       </div>
       
-      {/* Sidebar - Mobile version */}
       <div className={`sidebar mobile ${isSidebarOpen ? 'open' : ''}`}>
         <div className="p-4 text-right">
           <button 
@@ -516,7 +483,6 @@ const App = () => {
         />
       </div>
       
-      {/* Main chat area */}
       <div className="chat-container">
         {currentMessages.length === 0 ? (
           <div className="hero-container text-center flex flex-col items-center justify-center h-full">
@@ -564,7 +530,6 @@ const App = () => {
           </div>
         )}
         
-        {/* Loading indicator */}
         {isLoading && (
           <div className="message assistant">
             🤔 Анализирую...
@@ -572,7 +537,6 @@ const App = () => {
         )}
       </div>
       
-      {/* Chat input */}
       <div className="chat-input-container">
         <textarea
           className="chat-input"
@@ -586,7 +550,6 @@ const App = () => {
   );
 };
 
-// Sidebar component
 const SidebarContent = ({
   user,
   theme,
@@ -605,7 +568,6 @@ const SidebarContent = ({
 }) => {
   return (
     <div className="h-full flex flex-col p-4">
-      {/* User profile */}
       <div className="mb-4 pb-4 border-b" style={{ borderColor: themes[theme].border }}>
         <div className="font-bold text-lg flex items-center">
           <span className="mr-2">👤</span>
@@ -613,7 +575,6 @@ const SidebarContent = ({
         </div>
       </div>
       
-      {/* Theme selector */}
       <div className="mb-6">
         <h3 className="font-semibold mb-3 flex items-center">
           <span className="mr-2">🎨</span>
@@ -635,7 +596,6 @@ const SidebarContent = ({
         </div>
       </div>
       
-      {/* Profile actions */}
       <div className="mb-6 grid grid-cols-2 gap-3">
         <button
           className="py-2 rounded-lg font-medium flex items-center justify-center"
@@ -662,7 +622,6 @@ const SidebarContent = ({
         </button>
       </div>
       
-      {/* Document upload */}
       <div className="mb-6 pb-4 border-b" style={{ borderColor: themes[theme].border }}>
         <h3 className="font-semibold mb-3 flex items-center">
           <span className="mr-2">📁</span>
@@ -699,14 +658,12 @@ const SidebarContent = ({
         )}
       </div>
       
-      {/* Chat management */}
       <div className="mb-4">
         <h3 className="font-semibold mb-3 flex items-center">
           <span className="mr-2">📚</span>
           Мои чаты
         </h3>
         
-        {/* Chat list */}
         <div className="space-y-2 mb-4 max-h-60 overflow-y-auto pr-2">
           {chats.map((chat) => (
             <div
@@ -725,7 +682,6 @@ const SidebarContent = ({
           ))}
         </div>
         
-        {/* Chat actions */}
         <div className="grid grid-cols-2 gap-2 mb-4">
           <button
             className="py-2 rounded-lg font-medium flex items-center justify-center"
@@ -752,7 +708,6 @@ const SidebarContent = ({
           </button>
         </div>
         
-        {/* Create new chat */}
         <div className="flex gap-2">
           <input
             type="text"
